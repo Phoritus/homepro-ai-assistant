@@ -6,6 +6,7 @@ import { POLICIES } from "../domain/policies.ts";
 /** What the engine decided for this turn. Rendering turns it into words; it adds no facts of its own. */
 export type Decision =
   | { kind: "greet" }
+  | { kind: "close" }
   | { kind: "ask"; missing: "room_size" | "budget" | "both"; known: KnownContext }
   | { kind: "match"; outcome: MatchOutcome }
   | { kind: "sku"; outcome: SkuOutcome }
@@ -26,6 +27,7 @@ interface Phrases {
   sep: string;
   reason: Record<HandoffReason, string>;
   greet: string;
+  close: string;
   askBoth: string;
   askRoom: (budget: number) => string;
   askBudget: (band: RoomSizeBand) => string;
@@ -63,6 +65,7 @@ const EN: Phrases = {
     out_of_scope: "question outside what I can answer",
   },
   greet: `Hi! I'm the ${STORE_NAME} assistant. I can recommend a fan, explain returns, or pass you to staff. What size is your room (m²) and what's your budget (THB)?`,
+  close: "You're welcome! Message any time if you need a fan.",
   askBoth: "To recommend a fan, I need two things: your room size in m² and your budget in THB.",
   askRoom: (budget) => `Got it, your budget is ${thb(budget)}. What size is your room in m²?`,
   askBudget: (band) => `Got it, a ${EN.band[band]}. What's your budget in THB?`,
@@ -110,6 +113,7 @@ const TH: Phrases = {
     out_of_scope: "คำถามที่อยู่นอกข้อมูลที่ตอบได้",
   },
   greet: `สวัสดีค่ะ ผู้ช่วยของ ${STORE_NAME} ยินดีให้บริการ แนะนำพัดลม อธิบายนโยบายคืนสินค้า หรือส่งต่อเจ้าหน้าที่ได้ค่ะ ห้องของคุณขนาดกี่ตารางเมตร และงบประมาณเท่าไรคะ`,
+  close: "ยินดีค่ะ หากต้องการพัดลมอีก ทักมาได้ตลอดเลยนะคะ",
   askBoth: "เพื่อแนะนำพัดลม ขอทราบขนาดห้อง (ตร.ม.) และงบประมาณ (บาท) ค่ะ",
   askRoom: (budget) => `รับทราบค่ะ งบประมาณ ${thb(budget)} ห้องของคุณขนาดกี่ตารางเมตรคะ`,
   askBudget: (band) => `รับทราบค่ะ ${TH.band[band]} งบประมาณเท่าไรคะ`,
@@ -147,7 +151,18 @@ const TH: Phrases = {
 
 const PHRASES: Record<Language, Phrases> = { en: EN, th: TH };
 
-export function render(decision: Decision, language: Language, baseUrl: string): Rendered {
+/** Renders each decision in order, joined by a blank line, with duplicate actions removed. */
+export function render(decisions: Decision[], language: Language, baseUrl: string): Rendered {
+  const parts = decisions.map((d) => renderOne(d, language, baseUrl));
+  const seen = new Set<string>();
+  const actions = parts.flatMap((p) => p.actions).filter((a) => {
+    const key = `${a.kind}:${a.sku}`;
+    return seen.has(key) ? false : (seen.add(key), true);
+  });
+  return { text: parts.map((p) => p.text).join("\n\n"), actions };
+}
+
+function renderOne(decision: Decision, language: Language, baseUrl: string): Rendered {
   const t = PHRASES[language];
   const view = (sku: string): ReplyAction => ({ kind: "view_product", sku, url: `${baseUrl}/demo/products/${sku}` });
   const checkout = (sku: string): ReplyAction => ({ kind: "demo_checkout", sku, url: `${baseUrl}/demo/checkout?sku=${sku}` });
@@ -175,6 +190,8 @@ export function render(decision: Decision, language: Language, baseUrl: string):
   switch (decision.kind) {
     case "greet":
       return { text: t.greet, actions: [] };
+    case "close":
+      return { text: t.close, actions: [] };
     case "ask": {
       const { missing, known } = decision;
       if (missing === "room_size" && known.budgetThb !== undefined) return { text: t.askRoom(known.budgetThb), actions: [] };
