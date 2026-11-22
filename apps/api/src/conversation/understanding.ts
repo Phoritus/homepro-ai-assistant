@@ -13,6 +13,7 @@ export const LLM_INTENTS = [
   "greeting",
   "closing",
   "out_of_scope",
+  "off_topic",
 ] as const;
 export type LlmIntent = (typeof LLM_INTENTS)[number];
 
@@ -105,6 +106,8 @@ const SUPPORT_WORDS: [RegExp, Intent][] = [
 const OUT_OF_SCOPE_WORDS =
   /\bdeliver\b|\b(delivery|shipping) (fee|cost|charge)s?\b|\binstall\w*|\bpay(ment|ing|s)?\b|\bcredit card\b|\b(store|opening|business) hours\b|\bwhat time\b[^?]*\b(open|close)|ผ่อน|จัดส่ง|ติดตั้ง|โปรโมชั่น|ชำระ/i;
 const CLOSING_WORDS = /\b(thanks|thank you|thx|bye|goodbye|that['’]?s all)\b|ขอบคุณ|บาย|ลาก่อน/i;
+// "อากาศ" alone is weather; after ฟอก/ปรับ it is an air purifier or air conditioner, a shop question.
+const OFF_TOPIC_WORDS = /\b(weather|jokes?)\b|(?<!ฟอก|ปรับ)อากาศ|ตลก|มุก/i;
 const GREETING_WORDS = /^\s*(hi|hello|hey|good (morning|afternoon|evening))\b|สวัสดี/i;
 const BROWSE_WORDS =
   /\bwhat (?:\w+ )?(?:do|does) (?:you|the shop|the store) (?:have|sell|carry|stock)\b|\bwhat(?:['’]s| is)? (?:in stock|available|left)\b|\banything (?:in stock|available|left)\b|\b(?:show|list) (?:me )?(?:your |all |the )?(?:fans|products|models)\b|\bcatalog(?:ue)?\b|มี(?:อะไร|รุ่นไหน|แบบไหน)(?:บ้าง|เหลือ|ขาย)|มีพัดลม(?:อะไร|รุ่นไหน|แบบไหน)|เหลืออะไร|ขายอะไร/i;
@@ -174,6 +177,8 @@ export function understandByKeywords(text: string, ctx: UnderstandContext): Unde
     const closingAt = index(CLOSING_WORDS, text);
     if (greetingAt !== undefined) hits.push({ intent: "greeting", at: greetingAt });
     if (closingAt !== undefined) hits.push({ intent: "closing", at: closingAt });
+    const offTopicAt = index(OFF_TOPIC_WORDS, text);
+    if (offTopicAt !== undefined) hits.push({ intent: "off_topic", at: offTopicAt });
   }
 
   const [first, ...rest] = new Set(hits.sort((a, b) => a.at - b.at).map((h) => h.intent));

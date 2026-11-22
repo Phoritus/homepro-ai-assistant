@@ -15,8 +15,10 @@ const TAXONOMY = `Intents (a message may carry more than one; list them in the o
 - "staff_request": wants a human.
 - "greeting": a greeting with no request.
 - "closing": thanks, goodbye, or ending the chat with no new request.
-- "out_of_scope": anything else, including delivery areas or fees for new purchases, payment methods,
-    installments, installation, store hours, promotions, other products, and chit-chat.
+- "out_of_scope": a question about the shop that staff could answer but the above don't cover, including delivery
+    areas or fees for new purchases, payment methods, installments, installation, store hours, promotions, other products.
+- "off_topic": not about the shop at all: weather, jokes, news, general knowledge, chit-chat.
+    Mentioning hot weather while asking for a fan is "recommend", not "off_topic".
 Never use "recommend" or "product_info" just because a message mentions fans or buying; delivery, payment and
 installation questions are "out_of_scope" even when they mention a fan.
 Drop "greeting" or "closing" when the same message also carries a real request.`;

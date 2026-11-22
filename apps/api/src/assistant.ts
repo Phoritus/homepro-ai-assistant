@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { AssistantReply, Channel } from "@homepro/shared";
+import type { AssistantReply, Channel, Turn } from "@homepro/shared";
 import { handleTurn } from "./conversation/engine.ts";
 import { newSession, sessionKey, type SessionStore } from "./conversation/session.ts";
 import { RateLimitedError, understandByKeywords, type UnderstandContext, type Understander, type Understanding } from "./conversation/understanding.ts";
@@ -29,6 +29,8 @@ export const MAX_MESSAGE_CHARS = 1000;
 /** The one shared backend both channels call. Channel adapters only translate formats. */
 export interface Assistant {
   respond(channel: Channel, userId: string, text: string): Promise<AssistantResponse>;
+  /** The live session's turns, oldest first; empty once it has expired. */
+  history(channel: Channel, userId: string): Turn[];
 }
 
 export function createAssistant({ sessions, llm, log, baseUrl, now = () => new Date(), newId = randomUUID }: AssistantDeps): Assistant {
@@ -67,6 +69,9 @@ export function createAssistant({ sessions, llm, log, baseUrl, now = () => new D
       });
       if (result.reply.handoff) log.info("handoff_packet", { packet: result.reply.handoff });
       return { reply: result.reply, source };
+    },
+    history(channel, userId) {
+      return sessions.get(sessionKey(channel, userId), now())?.history ?? [];
     },
   };
 }

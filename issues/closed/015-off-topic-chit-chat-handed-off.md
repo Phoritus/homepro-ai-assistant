@@ -1,5 +1,6 @@
 # 015: Off-topic chit-chat ("how about the weather") creates a staff handoff
 
+- **Status:** Closed 2026-11-22 on branch `fix/issues-008-015`. New `off_topic` intent routes to a `redirect` decision: no handoff, no packet, known context and the pending question kept. `out_of_scope` keeps shop questions staff can answer. Live with Groq `openai/gpt-oss-20b`: `How about weather today` and `เล่าเรื่องตลกให้ฟังหน่อย` read as `off_topic`, and `อากาศร้อนมาก อยากได้พัดลมสำหรับห้อง 12 ตร.ม.` stays `recommend`.
 - **Severity:** Medium
 - **Spec:** §4.2.3 (handoff is for shop queries the fixtures can't answer). Also affects the pilot KPI, because each chit-chat message counts as a handoff and sends staff a Handoff Packet
 - **Path:** LLM (`openai/gpt-oss-120b`, branch `feat/intent-routing`)

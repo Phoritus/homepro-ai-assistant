@@ -38,7 +38,7 @@ This check is read-only. It requires that the PID this run started is alive, tha
 | :-- | :-- | :-- |
 | `chat <sessionId> <text>` | `POST /api/chat` the way the Web Chat page does. Reusing a sessionId continues that conversation | HTTP status and the `AssistantReply` (`language`, `text`, `actions`, `handoff`) |
 | `line <userId> <text>` | Posts an HMAC-signed LINE text-message event to `/webhooks/line` | HTTP status and the LINE reply payload captured from the server log (`line_reply_stubbed`) |
-| `get <path>` | GET a page, such as `demo/products/HP-F01` or `"demo/checkout?sku=HP-F01"` | Status and the page's visible text |
+| `get <path>` | GET a page, such as `demo/products/HP-F01` or `"demo/checkout?sku=HP-F01"`. `"api/chat/history?sessionId=<id>"` returns the turns a reloaded Web Chat page shows | Status and the page's visible text (the JSON body for the history route, cut at 500 characters) |
 
 The sessionId must match `^[\w-]{8,100}$`, or the server answers 400. Use a fresh sessionId or userId per journey, because sessions remember room size and budget.
 
@@ -72,7 +72,7 @@ This kills only the PID recorded in `.verify-run/<port>.json`, then deletes that
 - **Git Bash path rewriting.** Git Bash on Windows turns arguments that start with `/` into Windows paths (`/demo/x` becomes `C:/Program Files/Git/demo/x`). Pass page paths without the leading slash. `get` adds it.
 - **curl and Thai text.** On Windows, curl's command-line arguments can garble Thai text. The helper sends UTF-8 correctly, so use it (or `--data-binary @file.json`) for Thai messages.
 - **Restarts forget sessions.** Sessions are in-memory, so a restart forgets every conversation. Multi-turn journeys must run against one instance.
-- **Unknown messages and the LLM.** In keyword mode, a message no rule matches gets the fallback text, not a handoff. Messages with explicit service words (deliver, install, installment, pay, ผ่อน, จัดส่ง) hand off as `out_of_scope` in both modes. With the LLM, any off-topic message hands off as `out_of_scope`. Assert per mode.
+- **Unknown messages and the LLM.** In keyword mode, a message no rule matches gets the fallback text, not a handoff. Messages with explicit service words (deliver, install, installment, pay, ผ่อน, จัดส่ง) hand off as `out_of_scope` in both modes. Messages not about the shop (weather, joke, อากาศ, ตลก) get a `redirect` with no handoff in both modes. Other off-topic messages get the fallback in keyword mode, and the LLM may read them as `off_topic` (redirect) instead. Assert per mode.
 
 ## Feature map
 

@@ -28,7 +28,7 @@ Preconditions:
 
 ## Gotchas
 
-- With the LLM on, an off-topic message is handed off as `out_of_scope` instead of getting the fallback. Assert per mode.
+- Off-topic messages (weather, jokes) get a `redirect` decision with no handoff, not a handoff. A message no keyword rule matches gets the fallback in keyword mode but may be read as `off_topic` by the LLM. Assert per mode.
 - `npm test` covers outage and invalid output against a fake Groq API. Only an `--llm` run proves the real API and model name work.
 - An `llm_failed` with `groq http 404` on every turn means the model was retired. `llama-3.1-8b-instant` was, which is why the default is now `openai/gpt-oss-20b`. List the models available to the key with `GET https://api.groq.com/openai/v1/models`.
 - A passing `--llm` scenario run alone proves nothing, because the keyword fallback passes the same scenarios. `npm run scenarios -- --llm` now fails unless every real Groq call succeeded. In a live run, check for `llm_ok` lines.

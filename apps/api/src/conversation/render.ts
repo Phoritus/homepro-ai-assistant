@@ -13,6 +13,7 @@ export type Decision =
   | { kind: "sku"; outcome: SkuOutcome }
   | { kind: "policy"; policyId: "SUP-01" }
   | { kind: "handoff"; reason: HandoffReason }
+  | { kind: "redirect" }
   | { kind: "fallback" };
 
 export interface Rendered {
@@ -50,6 +51,7 @@ interface Phrases {
   askBudgetForAlternative: string;
   returns: (policyText: string) => string;
   handoff: (reason: HandoffReason, policyText: string) => string;
+  redirect: string;
   fallback: string;
   view: (sku: string) => string;
   checkout: string;
@@ -97,6 +99,7 @@ const EN: Phrases = {
     `I'm passing this to our staff (policy SUP-02, reason: ${EN.reason[reason]}). ${text} ` +
     "So I can't check an order or give you a ticket number. Staff will receive a summary with: the channel, " +
     "the reason, your language, any room size, budget and SKUs you mentioned, and your last few messages.",
+  redirect: "Sorry, I can only help with fans, returns and orders here.",
   fallback:
     "Sorry, I can't process that right now. I can recommend a fan if you tell me your room size (m²) and budget (THB), " +
     "explain our returns policy, or pass you to staff. Just type \"staff\".",
@@ -146,6 +149,7 @@ const TH: Phrases = {
     `ขอส่งต่อเรื่องนี้ให้เจ้าหน้าที่ค่ะ (นโยบาย SUP-02 เหตุผล: ${TH.reason[reason]}) ${text} ` +
     "จึงไม่สามารถตรวจสอบคำสั่งซื้อหรือออกหมายเลขเรื่องได้ เจ้าหน้าที่จะได้รับสรุปที่มี: ช่องทาง เหตุผล ภาษาของคุณ " +
     "ขนาดห้อง งบประมาณ และรหัสสินค้าที่คุณกล่าวถึง และข้อความล่าสุดของคุณ",
+  redirect: "ขออภัยค่ะ ที่นี่ช่วยได้เฉพาะเรื่องพัดลม การคืนสินค้า และคำสั่งซื้อค่ะ",
   fallback:
     "ขออภัยค่ะ ขณะนี้ไม่สามารถประมวลผลข้อความได้ หากแจ้งขนาดห้อง (ตร.ม.) และงบประมาณ (บาท) จะแนะนำพัดลมให้ได้ " +
     "หรือสอบถามนโยบายคืนสินค้า หรือพิมพ์ \"เจ้าหน้าที่\" เพื่อคุยกับพนักงานค่ะ",
@@ -225,6 +229,8 @@ function renderOne(decision: Decision, language: Language, baseUrl: string): Ren
       const inScope = decision.reason === "order_status" || decision.reason === "damaged_delivery";
       return { text: t.handoff(decision.reason, inScope ? `${scope[language]} ${disclosure[language]}` : disclosure[language]), actions: [] };
     }
+    case "redirect":
+      return { text: t.redirect, actions: [] };
     case "fallback":
       return { text: t.fallback, actions: [] };
   }

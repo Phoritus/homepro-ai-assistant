@@ -78,3 +78,27 @@ describe("LINE webhook", () => {
     expect(lines).toContainEqual(expect.objectContaining({ event: "message_truncated", fields: expect.objectContaining({ length: 5000 }) }));
   });
 });
+
+describe("Web Chat history", () => {
+  it("returns the session's turns so a reloaded page can show them, and nothing for an unknown or invalid id", async () => {
+    const { log } = recordingLogger();
+    const assistant = createAssistant({ sessions: createMemorySessionStore(60_000), llm: null, log, baseUrl: "http://demo.test" });
+    const server = createHttpServer({ assistant, log, line: null });
+    await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+    close = () => server.close();
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const history = (id: string) => fetch(`${base}/api/chat/history?sessionId=${id}`);
+
+    await fetch(`${base}/api/chat`, { method: "POST", body: JSON.stringify({ sessionId: "web-reload-1", message: "I need a fan for my 12 m² bedroom" }) });
+
+    const res = await history("web-reload-1");
+    expect(res.status).toBe(200);
+    const { turns } = (await res.json()) as { turns: { role: string; text: string }[] };
+    expect(turns).toEqual([
+      { role: "shopper", text: "I need a fan for my 12 m² bedroom" },
+      { role: "assistant", text: expect.stringContaining("budget") },
+    ]);
+    expect(await (await history("web-other-1")).json()).toEqual({ turns: [] });
+    expect((await history("no")).status).toBe(400);
+  });
+});

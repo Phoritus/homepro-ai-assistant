@@ -53,7 +53,8 @@ Fallback verification (spec §3.2): `npm run scenarios` signs synthetic LINE web
 | Room size and budget both known | **Answer** with a Valid Match, an Alternative, or a No-Match |
 | A specific SKU is asked about | **Answer** with its stock and budget fit. If it is out of stock or over budget, offer an Alternative (or ask for the budget first) |
 | Return or refund question | **Answer** from `SUP-01` only |
-| Order status, damaged delivery, warranty, shopper asks for staff, or the LLM judges the question out of scope | **Hand off** under `SUP-02` |
+| Order status, damaged delivery, warranty, shopper asks for staff, or a shop question the fixtures can't answer | **Hand off** under `SUP-02` |
+| Not about the shop at all (weather, jokes, chit-chat) | **Redirect** to fans, returns and orders, re-ask any missing room size or budget, no handoff |
 | LLM down or invalid, and the keyword rules can't read the message | Safe **fallback** message listing what the assistant can do |
 
 ### Sales flow (Flow A)
@@ -85,6 +86,7 @@ flowchart TD
   M[Shopper message] --> I{Intent}
   I -->|return / refund| P[SUP-01 text: 14 days, unopened, proof of purchase, approval not guaranteed]
   I -->|order status / damaged / warranty / staff / out of scope| H[Handoff under SUP-02]
+  I -->|off topic| R[Redirect to what the assistant handles, no handoff]
   H --> T[Tell shopper: no order lookup or real ticketing; list what staff receive]
   H --> PK[Handoff Packet to staff log]
 ```
@@ -96,7 +98,7 @@ flowchart TD
 ```mermaid
 flowchart LR
   subgraph Channels
-    W[Web Chat page<br/>public/index.html] -->|POST /api/chat| SV
+    W[Web Chat page<br/>public/index.html] -->|POST /api/chat<br/>GET /api/chat/history| SV
     L[LINE OA] -->|POST /webhooks/line<br/>signature verified| SV
   end
   SV[HTTP server<br/>server.ts] --> AS[Assistant<br/>assistant.ts]
