@@ -63,7 +63,8 @@ const PROBES: Probe[] = [
   { id: "ctx2", text: "about 20", awaiting: "room_size", earlier: ["recommend me a fan"], want: ["recommend"], area: 20 },
 ];
 
-const PACE_MS = 2100;
+// Groq free tier allows 8K tokens per minute and a medium-effort reading costs about 1K.
+const PACE_MS = 8000;
 const PASS_RATE = 0.95;
 const MAX_WAIT_MS = 30_000;
 
