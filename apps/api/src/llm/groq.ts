@@ -54,9 +54,9 @@ const READING_SCHEMA = {
   },
 };
 
-/** Reasoning knob per model family: gpt-oss takes "low", qwen3 takes "none". Other models get none. */
+/** Reasoning knob per model family: gpt-oss takes "medium", qwen3 takes "none". Other models get none. */
 const REASONING_EFFORT: [prefix: string, effort: string][] = [
-  ["openai/gpt-oss", "low"],
+  ["openai/gpt-oss", "medium"],
   ["qwen/qwen3", "none"],
 ];
 

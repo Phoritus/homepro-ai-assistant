@@ -98,8 +98,8 @@ describe("Groq understander", () => {
   });
 
   it.each([
-    ["openai/gpt-oss-20b", "low"],
-    ["openai/gpt-oss-120b", "low"],
+    ["openai/gpt-oss-20b", "medium"],
+    ["openai/gpt-oss-120b", "medium"],
     ["qwen/qwen3.8-27b", "none"],
   ])("sets reasoning_effort for %s to %s", async (model, effort) => {
     const seen: { init?: RequestInit | undefined } = {};
