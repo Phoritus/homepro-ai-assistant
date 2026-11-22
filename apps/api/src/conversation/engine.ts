@@ -126,7 +126,8 @@ export function handleTurn(req: TurnRequest): TurnResult {
   const { steps, known, awaiting } = decide(session, u);
   const decisions = steps.map((s) => s.decision);
   const language = u.language;
-  const { text, actions } = render(decisions, language, req.baseUrl);
+  const { text: body, actions } = render(decisions, language, req.baseUrl);
+  const text = u.opener === null ? body : `${u.opener} ${body}`;
 
   const historyWithShopper = [...session.history, shopperTurn];
   const handoffDecision = decisions.find((d) => d.kind === "handoff");

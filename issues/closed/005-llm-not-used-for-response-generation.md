@@ -1,5 +1,6 @@
 # 005: The LLM does understanding only, while the spec lists response generation too
 
+- **Status:** Closed 2026-11-22 on branch `fix/issues-008-015`, option 1. The Groq reading carries an `opener` sentence in the same call, `factFreeOpener` drops anything fact-like or in the wrong language, and the engine puts it before the template reply. Live: `My new fan arrived broken, I'm so upset` got "I'm sorry to hear that." before the SUP-02 handoff text.
 - **Severity:** Medium (a grading or acceptance risk, not a runtime bug)
 - **Spec:** §1, "Integrate at least one real LLM API call … for natural language understanding, conversational flow, and response generation"
 - **Related:** [ADR 0001](../docs/adr/0001-llm-for-understanding-only.md)

@@ -7,7 +7,7 @@ const BASE = "http://demo.test";
 const NOW = new Date("2026-11-22T10:00:00Z");
 
 const reading = (partial: Partial<Understanding>): Understanding => ({
-  intents: ["unclear"], asks: null, language: "en", roomAreaSqm: null, roomSizeBand: null, budgetThb: null, skus: [], ...partial,
+  intents: ["unclear"], asks: null, language: "en", roomAreaSqm: null, roomSizeBand: null, budgetThb: null, skus: [], opener: null, ...partial,
 });
 
 function chat() {

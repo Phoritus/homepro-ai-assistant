@@ -2,7 +2,7 @@
 
 A sales and customer-service chat assistant for a fictional fan catalog. It runs on Web Chat and LINE Official Account. Both channels call one shared backend, so they apply the same catalog, policy and handoff rules.
 
-The LLM (Groq) only reads the shopper's message. It extracts intent, room size, budget, SKU and language as JSON. Code decides and writes every SKU, price, stock statement, policy text and handoff notice. See [ADR 0001](docs/adr/0001-llm-for-understanding-only.md). Terms such as Valid Match, Alternative and Handoff Packet are defined in [GLOSSARY.md](GLOSSARY.md).
+The LLM (Groq) reads the shopper's message and extracts intent, room size, budget, SKU and language as JSON. In the same call it writes a short opening sentence for the reply, such as sympathy for a damaged delivery. Code drops any opener that contains a number, ฿, a SKU, a policy or stock word, a promise or a question, or that is in the wrong language. Code decides and writes every SKU, price, stock statement, policy text and handoff notice. When the LLM is down, replies have no opener and are otherwise identical. See [ADR 0001](docs/adr/0001-llm-for-understanding-only.md). Terms such as Valid Match, Alternative and Handoff Packet are defined in [GLOSSARY.md](GLOSSARY.md).
 
 All data is fictional. There are no payments, no real orders and no real tickets.
 

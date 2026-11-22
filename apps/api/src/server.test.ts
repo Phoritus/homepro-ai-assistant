@@ -63,7 +63,7 @@ describe("LINE webhook", () => {
     const seen: string[] = [];
     const llm: Understander = async (text) => {
       seen.push(text);
-      return { intents: ["greeting"], asks: null, language: "en", roomAreaSqm: null, roomSizeBand: null, budgetThb: null, skus: [] };
+      return { intents: ["greeting"], asks: null, language: "en", roomAreaSqm: null, roomSizeBand: null, budgetThb: null, skus: [], opener: null };
     };
     const delivered: string[] = [];
     const { log, lines } = recordingLogger();

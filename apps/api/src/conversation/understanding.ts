@@ -40,6 +40,20 @@ export interface Understanding {
   roomSizeBand: RoomSizeBand | null;
   budgetThb: number | null;
   skus: string[];
+  /** A fact-free sentence the LLM wrote to open the reply; null from the keyword rules or when it failed the fact check. */
+  opener: string | null;
+}
+
+const MAX_OPENER_CHARS = 120;
+/** Anything that could state a price, stock level, SKU, policy term or promise. Code owns those facts. */
+const FACT_LIKE =
+  /[\d๐-๙฿?\n]|\bbaht\b|\bthb\b|hp[\s-]?f|\bsup-|\b(price|cost|cheap|stock|available|refund|return|exchange|warrant\w*|guarantee\w*|approv\w*|ticket|deliver\w*|ship\w*|discount|free|promis\w*|polic\w*|order)\b|บาท|ราคา|สต็อก|มีของ|หมด|คืน|รับประกัน|อนุมัติ|จัดส่ง|ส่วนลด|ฟรี|นโยบาย|คำสั่งซื้อ|สัญญา/i;
+
+/** Keeps an LLM opener only if it is short, in the reply's language and free of anything fact-like. */
+export function factFreeOpener(opener: string | null, language: Language): string | null {
+  const text = opener?.trim() ?? "";
+  if (text === "" || text.length > MAX_OPENER_CHARS || FACT_LIKE.test(text)) return null;
+  return THAI.test(text) === (language === "th") ? text : null;
 }
 
 const llmIntent = z.enum(LLM_INTENTS);
@@ -52,7 +66,8 @@ export const understandingSchema = z.object({
   roomSizeBand: z.enum(["small", "medium", "large"]).nullable(),
   budgetThb: z.number().nullable(),
   skus: z.array(z.string()),
-}) satisfies z.ZodType<Understanding>;
+  opener: z.string().nullable(),
+}).transform((u) => ({ ...u, opener: factFreeOpener(u.opener, u.language) })) satisfies z.ZodType<Understanding>;
 
 export interface UnderstandContext {
   awaiting: Awaiting;
@@ -183,5 +198,5 @@ export function understandByKeywords(text: string, ctx: UnderstandContext): Unde
 
   const [first, ...rest] = new Set(hits.sort((a, b) => a.at - b.at).map((h) => h.intent));
   const intents: [Intent, ...Intent[]] = first === undefined ? ["unclear"] : [first, ...rest];
-  return { intents, asks: intents.includes("product_info") ? asks : null, language, roomAreaSqm: area, roomSizeBand, budgetThb, skus };
+  return { intents, asks: intents.includes("product_info") ? asks : null, language, roomAreaSqm: area, roomSizeBand, budgetThb, skus, opener: null };
 }

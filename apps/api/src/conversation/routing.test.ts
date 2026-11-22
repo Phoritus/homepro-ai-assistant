@@ -7,7 +7,7 @@ const BASE = "http://demo.test";
 const NOW = new Date("2026-11-22T10:00:00Z");
 
 const reading = (partial: Partial<Understanding>): Understanding => ({
-  intents: ["unclear"], asks: null, language: "en", roomAreaSqm: null, roomSizeBand: null, budgetThb: null, skus: [], ...partial,
+  intents: ["unclear"], asks: null, language: "en", roomAreaSqm: null, roomSizeBand: null, budgetThb: null, skus: [], opener: null, ...partial,
 });
 
 function chat() {
@@ -308,5 +308,17 @@ describe("issue 015: off-topic chit-chat", () => {
     expect(kinds(chat()("x", reading({ intents: ["off_topic", "recommend"], roomAreaSqm: 12, budgetThb: 1000 })))).toEqual(["redirect", "match"]);
     expect(kinds(chat()("x", reading({ intents: ["off_topic", "order_status"] })))).toEqual(["redirect", "handoff"]);
     expect(kinds(chat()("x", reading({ intents: ["greeting", "off_topic"] })))).toEqual(["redirect", "ask"]);
+  });
+});
+
+describe("issue 005: LLM opener", () => {
+  it("opens the reply with the LLM's sentence and leaves the facts to the templates", () => {
+    const r = chat()("x", reading({ intents: ["damaged_delivery"], opener: "So sorry your fan arrived like that." }));
+    expect(r.reply.text).toMatch(/^So sorry your fan arrived like that\. I'm passing this to our staff \(policy SUP-02/);
+    expect(r.session.history.at(-1)?.text).toBe(r.reply.text);
+  });
+
+  it("keyword readings carry no opener", () => {
+    expect(understandByKeywords("The fan arrived damaged", { awaiting: null, recentShopperMessages: [] }).opener).toBeNull();
   });
 });
