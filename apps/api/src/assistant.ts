@@ -20,6 +20,9 @@ export interface AssistantResponse {
   source: UnderstandingSource;
 }
 
+/** Longest shopper message either channel passes on; Web rejects longer input, LINE's is cut here. */
+export const MAX_MESSAGE_CHARS = 1000;
+
 /** The one shared backend both channels call. Channel adapters only translate formats. */
 export interface Assistant {
   respond(channel: Channel, userId: string, text: string): Promise<AssistantResponse>;
@@ -41,7 +44,9 @@ export function createAssistant({ sessions, llm, log, baseUrl, now = () => new D
   }
 
   return {
-    async respond(channel, userId, text) {
+    async respond(channel, userId, rawText) {
+      const text = rawText.slice(0, MAX_MESSAGE_CHARS);
+      if (text.length < rawText.length) log.info("message_truncated", { channel, length: rawText.length });
       const at = now();
       const session = sessions.get(sessionKey(channel, userId), at) ?? newSession(channel, userId, at);
       const recentShopperMessages = session.history.filter((t) => t.role === "shopper").slice(-3).map((t) => t.text);
