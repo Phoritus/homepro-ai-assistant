@@ -1,5 +1,6 @@
 # 006: The LINE webhook returns 500 and skips remaining events when one reply fails
 
+- **Status:** Closed 2026-11-22 in merge `9171bf4`. Each LINE event is handled in its own try/catch that logs `line_reply_failed`; the webhook answers 200 after the signature check.
 - **Severity:** Medium
 - **Spec:** §3.2 (reply adapter), §5 ("gracefully degrade … rather than crashing")
 - **Path:** Live LINE mode

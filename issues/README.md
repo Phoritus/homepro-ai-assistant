@@ -1,8 +1,8 @@
-# Spec compliance audit: open issues
+# Spec compliance audit: issues
 
 Audit date: 2026-11-22. This audit checks the build against [technical_specification_homepro_ai_assistant.md](../technical_specification_homepro_ai_assistant.md). It ran on the real server (`PORT=8080`, Groq `openai/gpt-oss-20b`, LINE live mode behind ngrok) using 27 Web Chat probes, a LINE-originated webhook test, and a live reply-API call. The raw output was saved locally to `.verify-evidence/live-line/` (`audit.txt`, `server.log`), which git ignores.
 
-## Issues
+## Open issues
 
 | # | Severity | Spec | Title |
 | :- | :- | :- | :- |
@@ -11,14 +11,19 @@ Audit date: 2026-11-22. This audit checks the build against [technical_specifica
 | [003](003-sku-question-ignores-room-size.md) | High | §4.1.3, Glossary | A SKU question ignores the shopper's stated room size and offers a wrong-size fan with a checkout link |
 | [004](004-closing-messages-escalate.md) | Medium | §4.2.3 | "Thanks" and "bye" trigger a re-greeting or a staff handoff |
 | [005](005-llm-not-used-for-response-generation.md) | Medium | §1 | The LLM does understanding only, while the spec lists response generation too |
-| [006](006-line-webhook-500-on-reply-failure.md) | Medium | §3.2, §5 | The LINE webhook returns 500 and skips remaining events when one reply fails |
-| [007](007-groq-rate-limit-no-backoff.md) | Medium | §5 | Groq rate limits (429) after about 19 quick requests, with no retry |
 | [008](008-web-chat-history-lost-on-reload.md) | Medium | §3.1, §1 | Web Chat loses the visible history on reload while the server keeps the context |
-| [009](009-keyword-budget-ignores-minus-sign.md) | Low | §4.1.1 | The keyword fallback reads "budget -500" as ฿500 |
-| [010](010-handoff-text-quotes-order-sentence.md) | Low | §4.2.4 | Every handoff quotes the order and damaged-delivery sentence, even for unrelated questions |
 | [011](011-mixed-intent-drops-second-request.md) | Low | §4.1, §4.2 | A message with two requests answers only one |
-| [012](012-line-message-length-unbounded.md) | Low | §5 | LINE text has no length limit (Web caps at 1,000 characters) |
 | [013](013-live-line-delivery-unverified.md) | Blocker (setup) | §3.2, §6.5 | Live LINE delivery is unverified because "Use webhook" is off |
+
+## Closed issues
+
+| # | Severity | Spec | Title | Fixed in |
+| :- | :- | :- | :- | :- |
+| [006](closed/006-line-webhook-500-on-reply-failure.md) | Medium | §3.2, §5 | The LINE webhook returns 500 and skips remaining events when one reply fails | `9171bf4` |
+| [007](closed/007-groq-rate-limit-no-backoff.md) | Medium | §5 | Groq rate limits (429) after about 19 quick requests, with no retry | `4283a5c` |
+| [009](closed/009-keyword-budget-ignores-minus-sign.md) | Low | §4.1.1 | The keyword fallback reads "budget -500" as ฿500 | `33b811c` |
+| [010](closed/010-handoff-text-quotes-order-sentence.md) | Low | §4.2.4 | Every handoff quotes the order and damaged-delivery sentence, even for unrelated questions | `6bd1a6d` |
+| [012](closed/012-line-message-length-unbounded.md) | Low | §5 | LINE text has no length limit (Web caps at 1,000 characters) | `7644b05` |
 
 ## Compliance matrix
 
