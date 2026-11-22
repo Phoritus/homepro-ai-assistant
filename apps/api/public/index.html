@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demo Store Assistant</title>
+<style>
+  :root {
+    --bg: #f6f5f1; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6a64; --line: #e3e1d9;
+    --me: #1f4e79; --me-ink: #ffffff; --bot: #f0eee7; --accent: #c2410c; --warn-bg: #fff4d6; --warn-line: #e6c36a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #161614; --panel: #1f1f1c; --ink: #ecebe6; --muted: #a09f98; --line: #34332e;
+      --me: #3b6ea5; --me-ink: #ffffff; --bot: #2a2926; --accent: #f97316; --warn-bg: #3a3220; --warn-line: #7a6430; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, "Noto Sans Thai", sans-serif; }
+  main { max-width: 44rem; margin: 0 auto; min-height: 100dvh; display: flex; flex-direction: column; padding: 0 16px; }
+  header { padding: 20px 0 12px; border-bottom: 1px solid var(--line); }
+  header h1 { margin: 0; font-size: 1.15rem; }
+  header p { margin: 4px 0 0; color: var(--muted); font-size: .875rem; }
+  #log { flex: 1; overflow-y: auto; padding: 16px 0; display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 85%; padding: 10px 14px; border-radius: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .shopper { align-self: flex-end; background: var(--me); color: var(--me-ink); border-bottom-right-radius: 4px; }
+  .assistant { align-self: flex-start; background: var(--bot); border-bottom-left-radius: 4px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .actions a { font-size: .875rem; padding: 6px 12px; border: 1px solid var(--accent); color: var(--accent); border-radius: 999px; text-decoration: none; }
+  .actions a.primary { background: var(--accent); color: #fff; }
+  .handoff { margin-top: 10px; font-size: .8125rem; background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 8px; padding: 6px 10px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0; }
+  .chips button { font: inherit; font-size: .8125rem; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
+  form { display: flex; gap: 8px; padding: 12px 0 20px; border-top: 1px solid var(--line); }
+  input { flex: 1; min-width: 0; font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+  form button { font: inherit; padding: 10px 16px; border-radius: 10px; border: 0; background: var(--me); color: var(--me-ink); cursor: pointer; }
+  form button:disabled { opacity: .6; cursor: wait; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Demo Store Assistant</h1>
+    <p>Fictional catalog. Links are demo-only. No payments, orders or real tickets.</p>
+  </header>
+  <div id="log" aria-live="polite"></div>
+  <div class="chips" id="chips"></div>
+  <form id="form">
+    <input id="input" autocomplete="off" placeholder="e.g. My bedroom is 12 m², budget 1,000 baht" aria-label="Message">
+    <button id="send">Send</button>
+  </form>
+</main>
+<script>
+  const log = document.getElementById("log");
+  const form = document.getElementById("form");
+  const input = document.getElementById("input");
+  const sendBtn = document.getElementById("send");
+  const SAMPLES = ["I need a fan for my 12 m² bedroom", "Do you have HP-F03?", "Can I return a fan?", "Where is my order?", "ห้อง 20 ตร.ม. งบ 1500 บาท"];
+
+  function sessionId() {
+    const fresh = "web-" + crypto.randomUUID();
+    try {
+      const saved = localStorage.getItem("homepro.sessionId");
+      if (saved) return saved;
+      localStorage.setItem("homepro.sessionId", fresh);
+    } catch {}
+    return fresh;
+  }
+  const SESSION = sessionId();
+
+  function bubble(role, text) {
+    const el = document.createElement("div");
+    el.className = "msg " + role;
+    el.textContent = text;
+    log.appendChild(el);
+    log.scrollTop = log.scrollHeight;
+    return el;
+  }
+
+  function renderReply(reply) {
+    const el = bubble("assistant", reply.text);
+    if (reply.actions.length) {
+      const row = document.createElement("div");
+      row.className = "actions";
+      for (const a of reply.actions) {
+        const link = document.createElement("a");
+        link.href = a.url;
+        link.target = "_blank";
+        link.rel = "noopener";
+        link.textContent = a.kind === "demo_checkout" ? (reply.language === "th" ? "สั่งซื้อ (เดโม)" : "Demo checkout") : (reply.language === "th" ? "ดู " : "View ") + a.sku;
+        if (a.kind === "demo_checkout") link.className = "primary";
+        row.appendChild(link);
+      }
+      el.appendChild(row);
+    }
+    if (reply.handoff) {
+      const note = document.createElement("div");
+      note.className = "handoff";
+      note.textContent = reply.language === "th" ? "ส่งต่อเจ้าหน้าที่แล้ว (เดโม ไม่มีการเปิดเรื่องจริง)" : "Handed to staff (demo: no real ticket created)";
+      el.appendChild(note);
+    }
+  }
+
+  async function send(text) {
+    bubble("shopper", text);
+    sendBtn.disabled = true;
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ sessionId: SESSION, message: text }),
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      renderReply(await res.json());
+    } catch (err) {
+      bubble("assistant", "Sorry, the assistant is unreachable right now. Please try again.");
+    } finally {
+      sendBtn.disabled = false;
+      input.focus();
+    }
+  }
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = "";
+    send(text);
+  });
+
+  const chips = document.getElementById("chips");
+  for (const s of SAMPLES) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = s;
+    b.addEventListener("click", () => send(s));
+    chips.appendChild(b);
+  }
+
+  bubble("assistant", "Hi! Tell me your room size and budget and I'll recommend a fan, or ask about returns or an order.");
+</script>
+</body>
+</html>

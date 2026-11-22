@@ -1,0 +1,16 @@
+{
+  "name": "@homepro/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file-if-exists=../../.env src/main.ts",
+    "test": "node ../../node_modules/vitest/vitest.mjs run",
+    "typecheck": "node ../../node_modules/typescript/bin/tsc -p .",
+    "scenarios": "node --env-file-if-exists=../../.env src/run-scenarios.ts"
+  },
+  "dependencies": {
+    "@homepro/shared": "*",
+    "zod": "^4.6.7"
+  }
+}
