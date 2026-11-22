@@ -29,6 +29,9 @@ describe("keyword understander", () => {
     ["The fan arrived damaged", { intent: "damaged_delivery" }],
     ["Does it have a 5 year warranty?", { intent: "warranty" }],
     ["What's the weather tomorrow?", { intent: "other" }],
+    ["12 sqm room, budget -500 baht", { intent: "sales", roomAreaSqm: 12, budgetThb: -500 }],
+    ["budget −500", { intent: "sales", budgetThb: -500 }],
+    ["budget 1000-1500 baht", { intent: "sales", budgetThb: 1500 }],
   ] as const)("%s", (text, expected) => {
     expect(understandByKeywords(text, { awaiting: null, recentShopperMessages: [] })).toMatchObject(expected);
   });
@@ -76,6 +79,12 @@ describe("sales flow", () => {
     expect(first.reply.text).toMatch(/HP-F03 .*out of stock\. What's your budget/);
     expect(first.reply.actions).toEqual([]);
     expect(say("2000").reply.text).toMatch(/HP-F02/);
+  });
+
+  it("a negative budget is invalid: it asks for the budget instead of reading ฿500", () => {
+    const { reply, decision } = chat()("12 sqm room, budget -500 baht");
+    expect(decision).toMatchObject({ kind: "ask", missing: "budget" });
+    expect(reply.text).not.toContain("฿500");
   });
 
   it("No-Match states the floor price and recommends nothing", () => {
