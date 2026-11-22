@@ -42,7 +42,7 @@ This check is read-only. It requires that the PID this run started is alive, tha
 
 The sessionId must match `^[\w-]{8,100}$`, or the server answers 400. Use a fresh sessionId or userId per journey, because sessions remember room size and budget.
 
-Web Chat page handles, for a browser harness when one is available: input `#input`, send button `#send`, assistant bubbles `.msg.assistant`, link buttons `.actions a` (checkout has class `primary`), handoff note `.handoff`, sample chips `#chips button`. The HTTP drive proves the reply. Only a browser run proves the page renders it.
+Web Chat page handles, for a browser harness when one is available: input `#input`, send button `#send`, assistant bubbles `.msg.assistant`, link buttons `.actions a` (checkout has class `primary`), handoff note `.handoff`, sample chips `#chips button` (hidden once the shopper has spoken), typing indicator `.msg.typing`, send-failure notice `.error` with a `Try again` button. A reload redraws the buttons and handoff note from the history route, whose assistant turns carry `language`, `actions` and `handedOff`. The HTTP drive proves the reply. Only a browser run proves the page renders it.
 
 ## Evidence
 

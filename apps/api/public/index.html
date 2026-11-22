@@ -45,8 +45,9 @@
   #new-chat:focus-visible { outline-color: var(--brand-ink); }
   .demo-note { margin: 0; padding: 8px 0; font-size: .8125rem; color: var(--muted); border-bottom: 1px solid var(--line); }
 
-  #log { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
-  #log .wrap { display: flex; flex-direction: column; gap: 12px; padding-top: 16px; padding-bottom: 16px; }
+  /* column-reverse anchors the scroll to the newest turn while bubbles grow (e.g. when the Thai font arrives); scrollTop 0 is the bottom. */
+  #log { flex: 1; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column-reverse; }
+  #log .wrap { margin-bottom: auto; display: flex; flex-direction: column; gap: 12px; padding-top: 16px; padding-bottom: 16px; }
   .msg { max-width: 85%; padding: 10px 14px; border-radius: 16px; white-space: pre-wrap; overflow-wrap: anywhere; }
   .shopper { align-self: flex-end; background: var(--me); color: var(--me-ink); border-bottom-right-radius: 4px; }
   .assistant { align-self: flex-start; background: var(--bot); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
@@ -146,7 +147,7 @@
 
   function add(el) {
     turns.appendChild(el);
-    log.scrollTop = log.scrollHeight;
+    log.scrollTop = 0;
     return el;
   }
 
@@ -284,8 +285,6 @@
     } catch {} finally {
       setBusy(false);
     }
-    await document.fonts.ready;
-    log.scrollTop = log.scrollHeight;
   }
 
   document.getElementById("new-chat").addEventListener("click", () => {
