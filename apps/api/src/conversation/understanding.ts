@@ -1,5 +1,6 @@
 import type { Language, RoomSizeBand } from "@homepro/shared";
 import { z } from "zod";
+import { routeIntents } from "./intentRouter.ts";
 
 export const LLM_INTENTS = [
   "recommend",
@@ -111,22 +112,11 @@ const BAND_WORDS: [RegExp, RoomSizeBand][] = [
 
 const index = (re: RegExp, text: string) => re.exec(text)?.index;
 
-const SUPPORT_WORDS: [RegExp, Intent][] = [
-  [/\b(staff|human|agent|person|operator)\b|เจ้าหน้าที่|พนักงาน|คุยกับคน/i, "staff_request"],
-  [/\b(damaged?|broken|cracked|defective)\b|เสียหาย|แตก|ชำรุด|พัง/i, "damaged_delivery"],
-  [/\b(order status|track(ing)?|where is my order|my order|delivery status)\b|สถานะ|ติดตาม|คำสั่งซื้อ|พัสดุ/i, "order_status"],
-  [/\b(return|refund|exchange|send (it )?back)\b|คืนสินค้า|คืนเงิน|เปลี่ยนสินค้า|ขอคืน/i, "return_policy"],
-  [/\b(warrant(y|ies)|guarantee)\b|รับประกัน/i, "warranty"],
-];
+/** Services we never answer: these always hand off as out_of_scope, whatever the similarity router picks. */
 const OUT_OF_SCOPE_WORDS =
   /\bdeliver\b|\b(delivery|shipping) (fee|cost|charge)s?\b|\binstall\w*|\bpay(ment|ing|s)?\b|\bcredit card\b|\b(store|opening|business) hours\b|\bwhat time\b[^?]*\b(open|close)|ผ่อน|จัดส่ง|ติดตั้ง|โปรโมชั่น|ชำระ/i;
-const CLOSING_WORDS = /\b(thanks|thank you|thx|bye|goodbye|that['’]?s all)\b|ขอบคุณ|บาย|ลาก่อน/i;
-// "อากาศ" alone is weather; after ฟอก/ปรับ it is an air purifier or air conditioner, a shop question.
-const OFF_TOPIC_WORDS = /\b(weather|jokes?)\b|(?<!ฟอก|ปรับ)อากาศ|ตลก|มุก/i;
-const GREETING_WORDS = /^\s*(hi|hello|hey|good (morning|afternoon|evening))\b|สวัสดี/i;
-const BROWSE_WORDS =
-  /\bwhat (?:\w+ )?(?:do|does) (?:you|the shop|the store) (?:have|sell|carry|stock)\b|\bwhat(?:['’]s| is)? (?:in stock|available|left)\b|\banything (?:in stock|available|left)\b|\b(?:show|list) (?:me )?(?:your |all |the )?(?:fans|products|models)\b|\bcatalog(?:ue)?\b|มี(?:อะไร|รุ่นไหน|แบบไหน)(?:บ้าง|เหลือ|ขาย)|มีพัดลม(?:อะไร|รุ่นไหน|แบบไหน)|เหลืออะไร|ขายอะไร/i;
-const RECOMMEND_WORDS = /\b(fan|recommend|room|bedroom|buy|price|budget|stock)\b|พัดลม|แนะนำ|ห้อง|ซื้อ|ราคา|งบ/i;
+const SUPPORT_INTENTS = new Set<Intent>(["staff_request", "damaged_delivery", "order_status", "return_policy", "warranty", "out_of_scope"]);
+const SMALL_TALK = new Set<Intent>(["greeting", "closing"]);
 
 // Order matters: an attribute we don't hold wins over a held one so the question is never answered with the wrong fact.
 const ASK_WORDS: [RegExp, ProductAsk][] = [
@@ -161,40 +151,26 @@ export function understandByKeywords(text: string, ctx: UnderstandContext): Unde
   const firstSkuAt = skuMatches[0]?.index ?? Infinity;
   const hasSlot = area !== null || budgetThb !== null || roomSizeBand !== null;
 
-  const hits: { intent: Intent; at: number }[] = [];
-  for (const [re, intent] of SUPPORT_WORDS) {
-    const at = index(re, text);
-    if (at !== undefined) hits.push({ intent, at });
-  }
+  let hits: { intent: Intent; at: number }[] = routeIntents(text);
   const outOfScopeAt = index(OUT_OF_SCOPE_WORDS, text);
   const orderLike = hits.some((h) => h.intent === "order_status" || h.intent === "damaged_delivery");
+  // A delivery word inside an order question is about that order, so only order_status hands off.
+  if (orderLike || outOfScopeAt !== undefined) hits = hits.filter((h) => h.intent !== "out_of_scope");
   if (outOfScopeAt !== undefined && !orderLike) hits.push({ intent: "out_of_scope", at: outOfScopeAt });
 
   const asks = ASK_WORDS.find(([re]) => re.test(text))?.[1] ?? null;
   const askAt = Math.min(...ASK_WORDS.map(([re]) => index(re, text) ?? Infinity));
-  const hasOtherIntent = hits.length > 0;
+  const hasOtherIntent = hits.some((h) => SUPPORT_INTENTS.has(h.intent));
   const productInfo = skus.length === 1 && (!hasOtherIntent || asks !== null);
+  // One SKU, or a room size or budget, makes the shopping question specific: it is never a browse or chit-chat.
+  const specific = productInfo || skus.length >= 2 || hasSlot;
+  if (specific) hits = hits.filter((h) => h.intent !== "recommend" && h.intent !== "browse_catalog" && h.intent !== "off_topic");
   if (productInfo) hits.push({ intent: "product_info", at: Math.min(firstSkuAt, askAt) });
-
-  const browseAt = index(BROWSE_WORDS, text);
-  const browse = browseAt !== undefined && skus.length === 0 && !hasSlot;
-  if (browse) hits.push({ intent: "browse_catalog", at: browseAt });
-
-  const recommendWordAt = index(RECOMMEND_WORDS, text);
-  const wantsRecommend = !productInfo && !browse && (skus.length >= 2 || hasSlot || (recommendWordAt !== undefined && !hasOtherIntent));
-  if (wantsRecommend) {
+  else if (specific) {
     const slotAt = Math.min(areaMatch?.index ?? Infinity, budgetMatch?.index ?? Infinity, bandHit?.at ?? Infinity, bare === null ? Infinity : 0);
-    hits.push({ intent: "recommend", at: Math.min(slotAt, recommendWordAt ?? Infinity, firstSkuAt) });
+    hits.push({ intent: "recommend", at: Math.min(slotAt, firstSkuAt) });
   }
-
-  if (hits.length === 0) {
-    const greetingAt = index(GREETING_WORDS, text);
-    const closingAt = index(CLOSING_WORDS, text);
-    if (greetingAt !== undefined) hits.push({ intent: "greeting", at: greetingAt });
-    if (closingAt !== undefined) hits.push({ intent: "closing", at: closingAt });
-    const offTopicAt = index(OFF_TOPIC_WORDS, text);
-    if (offTopicAt !== undefined) hits.push({ intent: "off_topic", at: offTopicAt });
-  }
+  if (hits.some((h) => !SMALL_TALK.has(h.intent))) hits = hits.filter((h) => !SMALL_TALK.has(h.intent));
 
   const [first, ...rest] = new Set(hits.sort((a, b) => a.at - b.at).map((h) => h.intent));
   const intents: [Intent, ...Intent[]] = first === undefined ? ["unclear"] : [first, ...rest];

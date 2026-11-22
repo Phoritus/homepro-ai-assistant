@@ -51,6 +51,29 @@ describe("keyword intents", () => {
   });
 });
 
+describe("similarity routing: wordings that are not in the example table", () => {
+  it.each([
+    ["Give me all your policies", "return_policy"],
+    ["Give me all your product that have now so far", "browse_catalog"],
+    ["ขอดูนโยบายทั้งหมดของร้าน", "return_policy"],
+    ["I want to speak with someone from the shop", "staff_request"],
+    ["Can I talk to an admin?", "staff_request"],
+    ["The fan I got is all cracked", "damaged_delivery"],
+    ["Does it come with a guarantee?", "warranty"],
+    ["Is a refund possible?", "return_policy"],
+    ["มีของอะไรขายบ้างตอนนี้", "browse_catalog"],
+    ["Can you show me what fans you have?", "browse_catalog"],
+    ["Has my parcel been sent yet?", "order_status"],
+    ["ขอบคุณมากค่ะ", "closing"],
+  ] as const)("%s is read as %s", (text, intent) => {
+    expect(understandByKeywords(text, { awaiting: null, recentShopperMessages: [] }).intents).toEqual([intent]);
+  });
+
+  it("gibberish matches no example and falls back", () => {
+    expect(understandByKeywords("asdkjh qwe", { awaiting: null, recentShopperMessages: [] }).intents).toEqual(["unclear"]);
+  });
+});
+
 describe("issue 001: attributes the fixture does not hold", () => {
   it.each([
     ["What is the wattage of HP-F01?", reading({ intents: ["product_info"], asks: "unheld", skus: ["HP-F01"] })],
