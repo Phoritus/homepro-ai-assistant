@@ -66,6 +66,7 @@ const PROBES: Probe[] = [
 
 const PACE_MS = 2100;
 const PASS_RATE = 0.95;
+const MAX_WAIT_MS = 30_000;
 
 const sameIntents = (a: readonly Intent[], b: readonly Intent[]) => a.length === b.length && a.every((x, i) => x === b[i]);
 
@@ -93,7 +94,7 @@ async function understandPatiently(...args: Parameters<typeof understand>) {
     try {
       return await understand(...args);
     } catch (err) {
-      if (!(err instanceof RateLimitedError) || attempt >= 3) throw err;
+      if (!(err instanceof RateLimitedError) || attempt >= 3 || err.retryAfterMs > MAX_WAIT_MS) throw err;
       await sleep(err.retryAfterMs + 500);
     }
   }
@@ -110,6 +111,7 @@ for (const probe of PROBES) {
   } catch (err) {
     failures.push(`${probe.id} error ${err instanceof Error ? err.message : String(err)}`);
   }
+  console.error(`${probe.id} ${Date.now() - started} ms`);
   await sleep(Math.max(0, PACE_MS - (Date.now() - started)));
 }
 
