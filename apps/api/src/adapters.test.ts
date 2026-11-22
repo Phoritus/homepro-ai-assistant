@@ -91,8 +91,24 @@ describe("Groq understander", () => {
     const out = await groq(() => ok(reading), seen)("12 sqm, 1000 baht", { awaiting: "budget", recentShopperMessages: ["hi"] });
     expect(out).toEqual(reading);
     const sent = JSON.parse(String(seen.init?.body));
-    expect(sent).toMatchObject({ model: "m", temperature: 0, response_format: { type: "json_object" } });
+    expect(sent).toMatchObject({ model: "m", temperature: 0, response_format: { type: "json_schema", json_schema: { name: "reading", strict: true } } });
+    expect(sent.response_format.json_schema.schema.properties.intents).toMatchObject({ minItems: 1 });
+    expect(sent).not.toHaveProperty("reasoning_effort");
     expect(JSON.parse(sent.messages[1].content)).toEqual({ awaiting: "budget", earlierMessages: ["hi"], message: "12 sqm, 1000 baht" });
+  });
+
+  it.each([
+    ["openai/gpt-oss-20b", "low"],
+    ["openai/gpt-oss-120b", "low"],
+    ["qwen/qwen3.8-27b", "none"],
+  ])("sets reasoning_effort for %s to %s", async (model, effort) => {
+    const seen: { init?: RequestInit | undefined } = {};
+    const understand = createGroqUnderstander({
+      apiKey: "k", model, timeoutMs: 1000,
+      fetch: async (_url, init) => { seen.init = init; return ok(reading); },
+    });
+    await understand("x", { awaiting: null, recentShopperMessages: [] });
+    expect(JSON.parse(String(seen.init?.body))).toMatchObject({ model, reasoning_effort: effort });
   });
 
   it.each([
