@@ -1,5 +1,6 @@
 # 003: A SKU question ignores the shopper's stated room size and offers a wrong-size fan with a checkout link
 
+- **Status:** Closed 2026-11-22 on branch `feat/intent-routing`, not yet merged to main (`4258c8b`, `d4c41d9`). `checkSku` returns `wrong_size` when the known band differs from the product's; the reply states the mismatch and offers no checkout for that product. Two or more SKUs route to `recommend`.
 - **Severity:** High
 - **Spec:** §4.1.3, "Reason explaining why it fits the user's stated room size and budget". Glossary, "Alternative … The size mismatch is always stated"
 - **Path:** Both LLM and keyword rules

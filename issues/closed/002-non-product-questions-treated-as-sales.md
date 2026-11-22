@@ -1,5 +1,6 @@
 # 002: Delivery and payment questions are treated as sales, and the bot asks for room size and budget
 
+- **Status:** Closed 2026-11-22 on branch `feat/intent-routing`, not yet merged to main (`6b14573`, `abe9893`). `sales` is split into `recommend` and `product_info`; delivery, payment and installation questions are `out_of_scope` in the prompt and the keyword rules. Live: `Can I pay for a fan in installments?` handed off with Groq on.
 - **Severity:** High
 - **Spec:** §4.2.3, "any query outside the available fixture data" must hand off
 - **Path:** LLM (reproduced with `llm_ok`, `intent: "sales"`)

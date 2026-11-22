@@ -1,5 +1,6 @@
 # 011: A message with two requests answers only one
 
+- **Status:** Closed 2026-11-22 on branch `feat/intent-routing`, not yet merged to main (`6b14573`). Understandings carry an ordered `intents` list and each intent runs its route; a handoff keeps a match from the same message. Live: the reproduce input returned the order handoff plus HP-F01.
 - **Severity:** Low
 - **Spec:** §4.1 and §4.2 (each request type should be served)
 

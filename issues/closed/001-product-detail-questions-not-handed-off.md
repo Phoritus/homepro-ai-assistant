@@ -1,5 +1,6 @@
 # 001: Questions about product details outside the fixture get unrelated product facts instead of a handoff
 
+- **Status:** Closed 2026-11-22 on branch `feat/intent-routing`, not yet merged to main (`6b14573`, `abe9893`). The LLM returns `product_info` with `asks: "unheld"` for attributes the fixture doesn't hold, and that route hands off as `out_of_scope`. Live: `Does HP-F02 come with a remote control?` handed off with Groq on.
 - **Severity:** High
 - **Spec:** §4.2.3, "Trigger a staff handoff … any query outside the available fixture data"
 - **Path:** LLM (reproduced with `llm_ok`)

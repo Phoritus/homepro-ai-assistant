@@ -1,5 +1,6 @@
 # 013: Live LINE delivery is unverified because "Use webhook" is off
 
+- **Status:** Closed 2026-11-22. The owner sent real messages from the LINE app to **Test Assistant** and the server's reply arrived. Remaining setup: turn off LINE's built-in Greeting and Auto-response in LINE Official Account Manager so only the bot replies.
 - **Severity:** Blocker for §3.2 "live interaction" and §6.5 parity on real LINE (setup, not code)
 - **Owner:** Project owner (needs the LINE console and a phone)
 
