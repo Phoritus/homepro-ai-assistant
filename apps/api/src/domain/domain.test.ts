@@ -35,7 +35,8 @@ describe("fixtures", () => {
   });
 
   it("SUP-02 says the demo has no order lookup or ticketing", () => {
-    expect(POLICIES["SUP-02"].text.en).toMatch(/no order lookup or real ticketing/);
+    expect(POLICIES["SUP-02"].disclosure.en).toMatch(/no order lookup or real ticketing/);
+    expect(POLICIES["SUP-02"].scope.en).toMatch(/order status or damaged deliveries/);
   });
 });
 

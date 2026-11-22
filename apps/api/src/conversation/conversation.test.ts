@@ -124,6 +124,25 @@ describe("service flow", () => {
     expect(reply.handoff?.lastMessages.at(-1)).toMatchObject({ role: "shopper", text });
   });
 
+  it.each([
+    ["Where is my order?", true],
+    ["My fan arrived broken", true],
+    ["Is there a 3-year warranty?", false],
+    ["I want to talk to staff", false],
+  ] as const)("%s: the order/damaged sentence appears only for those reasons", (text, quoted) => {
+    const { reply } = chat()(text);
+    expect(reply.text.includes("For order status or damaged deliveries")).toBe(quoted);
+  });
+
+  it("an LLM out-of-scope handoff keeps the disclosure without the order sentence, in both languages", () => {
+    const en = chat("llm")("Do you sell air conditioners?").reply.text;
+    expect(en).toMatch(/no order lookup or real ticketing/);
+    expect(en).not.toMatch(/For order status or damaged deliveries/);
+    const th = chat("llm")("ขายแอร์ไหม").reply.text;
+    expect(th).toContain("ระบบเดโมนี้ไม่มีการค้นหาคำสั่งซื้อหรือระบบเปิดเรื่องจริง");
+    expect(th).not.toContain("สำหรับการติดตามสถานะคำสั่งซื้อ");
+  });
+
   it("the handoff packet carries what the shopper already told us", () => {
     const say = chat();
     say("12 sqm room, budget 1000 baht");

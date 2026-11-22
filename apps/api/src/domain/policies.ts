@@ -1,12 +1,16 @@
-import type { Language, PolicyId } from "@homepro/shared";
+import type { Language } from "@homepro/shared";
 
-export interface PolicyRecord {
-  id: PolicyId;
-  text: Record<Language, string>;
-}
+type Localized = Record<Language, string>;
 
-/** Fixture from spec §2.2. The only allowed source for support answers. */
-export const POLICIES: Readonly<Record<PolicyId, PolicyRecord>> = {
+/**
+ * Fixture from spec §2.2. The only allowed source for support answers.
+ * SUP-02 is split so a handoff quotes its order/damaged `scope` only when that is the reason,
+ * while the `disclosure` (no lookup, no ticketing) appears in every handoff.
+ */
+export const POLICIES: {
+  readonly "SUP-01": { readonly id: "SUP-01"; readonly text: Localized };
+  readonly "SUP-02": { readonly id: "SUP-02"; readonly scope: Localized; readonly disclosure: Localized };
+} = {
   "SUP-01": {
     id: "SUP-01",
     text: {
@@ -16,9 +20,13 @@ export const POLICIES: Readonly<Record<PolicyId, PolicyRecord>> = {
   },
   "SUP-02": {
     id: "SUP-02",
-    text: {
-      en: "For order status or damaged deliveries, we pass you to staff. This demo has no order lookup or real ticketing system.",
-      th: "สำหรับการติดตามสถานะคำสั่งซื้อหรือสินค้าเสียหายระหว่างจัดส่ง เราจะส่งต่อให้เจ้าหน้าที่ ระบบเดโมนี้ไม่มีการค้นหาคำสั่งซื้อหรือระบบเปิดเรื่องจริง",
+    scope: {
+      en: "For order status or damaged deliveries, we pass you to staff.",
+      th: "สำหรับการติดตามสถานะคำสั่งซื้อหรือสินค้าเสียหายระหว่างจัดส่ง เราจะส่งต่อให้เจ้าหน้าที่",
+    },
+    disclosure: {
+      en: "This demo has no order lookup or real ticketing system.",
+      th: "ระบบเดโมนี้ไม่มีการค้นหาคำสั่งซื้อหรือระบบเปิดเรื่องจริง",
     },
   },
 };
