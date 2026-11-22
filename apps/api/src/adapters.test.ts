@@ -78,7 +78,7 @@ describe("config", () => {
 });
 
 describe("Groq understander", () => {
-  const reading = { intents: ["recommend"], asks: null, language: "en", roomAreaSqm: 12, roomSizeBand: null, budgetThb: 1000, skus: [] };
+  const reading = { intents: ["recommend"], asks: null, language: "en", roomAreaSqm: 12, roomSizeBand: null, budgetThb: 1000, skus: [], opener: null };
   const groq = (respond: () => Response | Promise<Response>, seen: { init?: RequestInit | undefined } = {}) =>
     createGroqUnderstander({
       apiKey: "k", model: "m", timeoutMs: 1000,
@@ -95,6 +95,20 @@ describe("Groq understander", () => {
     expect(sent.response_format.json_schema.schema.properties.intents).toMatchObject({ minItems: 1 });
     expect(sent).not.toHaveProperty("reasoning_effort");
     expect(JSON.parse(sent.messages[1].content)).toEqual({ awaiting: "budget", earlierMessages: ["hi"], message: "12 sqm, 1000 baht" });
+  });
+
+  it.each([
+    ["Sorry to hear your bedroom is so hot.", "en", "Sorry to hear your bedroom is so hot."],
+    ["เสียใจด้วยนะคะที่สินค้าเสียหาย", "th", "เสียใจด้วยนะคะที่สินค้าเสียหาย"],
+    ["HP-F01 is perfect for you.", "en", null],
+    ["It only costs 890.", "en", null],
+    ["Your refund will be approved.", "en", null],
+    ["What size is your room?", "en", null],
+    ["เสียใจด้วยนะคะ", "en", null],
+    ["  ", "en", null],
+  ] as const)("keeps the opener %j only when it is fact-free and in the reply's language", async (opener, language, kept) => {
+    const out = await groq(() => ok({ ...reading, language, opener }))("x", { awaiting: null, recentShopperMessages: [] });
+    expect(out.opener).toBe(kept);
   });
 
   it.each([

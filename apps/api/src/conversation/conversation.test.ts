@@ -7,7 +7,7 @@ const BASE = "http://demo.test";
 const NOW = new Date("2026-11-22T10:00:00Z");
 
 const reading = (partial: Partial<Understanding>): Understanding => ({
-  intents: ["unclear"], asks: null, language: "en", roomAreaSqm: null, roomSizeBand: null, budgetThb: null, skus: [], ...partial,
+  intents: ["unclear"], asks: null, language: "en", roomAreaSqm: null, roomSizeBand: null, budgetThb: null, skus: [], opener: null, ...partial,
 });
 
 function chat() {
@@ -30,7 +30,8 @@ describe("keyword understander", () => {
     ["Where is my order?", { intents: ["order_status"] }],
     ["The fan arrived damaged", { intents: ["damaged_delivery"] }],
     ["Does it have a 5 year warranty?", { intents: ["warranty"] }],
-    ["What's the weather tomorrow?", { intents: ["unclear"] }],
+    ["What's the weather tomorrow?", { intents: ["off_topic"] }],
+    ["What is the capital of France?", { intents: ["unclear"] }],
     ["12 sqm room, budget -500 baht", { intents: ["recommend"], roomAreaSqm: 12, budgetThb: -500 }],
     ["budget −500", { intents: ["recommend"], budgetThb: -500 }],
     ["budget 1000-1500 baht", { intents: ["recommend"], budgetThb: 1500 }],
@@ -153,8 +154,8 @@ describe("service flow", () => {
   });
 
   it("out_of_scope hands off from either understander; an unclear keyword reading falls back instead", () => {
-    expect(chat()("What's the weather?", reading({ intents: ["out_of_scope"] })).reply.handoff).toMatchObject({ reason: "out_of_scope" });
-    const unclear = chat()("What's the weather?");
+    expect(chat()("Do you sell air conditioners?", reading({ intents: ["out_of_scope"] })).reply.handoff).toMatchObject({ reason: "out_of_scope" });
+    const unclear = chat()("What is the capital of France?");
     expect(unclear.decisions).toEqual([{ kind: "fallback" }]);
     expect(unclear.reply.handoff).toBeNull();
     expect(unclear.reply.text).toMatch(/room size.*budget.*returns.*staff/);

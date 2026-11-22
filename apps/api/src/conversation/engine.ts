@@ -55,6 +55,13 @@ const browseCatalog: Route = (known) => {
   return next.decision.kind === "ask" ? [browse, next] : [browse];
 };
 
+/** Not about the shop: say what we can help with, then re-ask whatever the sale still needs. */
+const redirect: Route = (known) => {
+  const redirected: Step = { decision: { kind: "redirect" }, known };
+  const next = recommend(known);
+  return next.decision.kind === "ask" ? [redirected, next] : [redirected];
+};
+
 const handoff =
   (reason: HandoffReason): Route =>
   (known) => ({ decision: { kind: "handoff", reason }, known, awaiting: null });
@@ -82,6 +89,7 @@ const ROUTES: Record<Intent, Route> = {
   greeting: (known) => ({ decision: { kind: "greet" }, known }),
   closing: (known) => ({ decision: { kind: "close" }, known }),
   out_of_scope: handoff("out_of_scope"),
+  off_topic: redirect,
   unclear: (known) => ({ decision: { kind: "fallback" }, known }),
 };
 
@@ -118,7 +126,8 @@ export function handleTurn(req: TurnRequest): TurnResult {
   const { steps, known, awaiting } = decide(session, u);
   const decisions = steps.map((s) => s.decision);
   const language = u.language;
-  const { text, actions } = render(decisions, language, req.baseUrl);
+  const { text: body, actions } = render(decisions, language, req.baseUrl);
+  const text = u.opener === null ? body : `${u.opener} ${body}`;
 
   const historyWithShopper = [...session.history, shopperTurn];
   const handoffDecision = decisions.find((d) => d.kind === "handoff");

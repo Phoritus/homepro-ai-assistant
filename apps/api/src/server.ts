@@ -16,8 +16,9 @@ export interface ServerDeps {
 const MAX_BODY_BYTES = 64 * 1024;
 const WEB_CHAT_HTML = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
 
+const sessionId = z.string().regex(/^[\w-]{8,100}$/);
 const chatRequest = z.object({
-  sessionId: z.string().regex(/^[\w-]{8,100}$/),
+  sessionId,
   message: z.string().trim().min(1).max(MAX_MESSAGE_CHARS),
 });
 
@@ -83,6 +84,13 @@ export function createApp({ assistant, log, line }: ServerDeps) {
       if (!parsed.success) throw new HttpError(400, "expected { sessionId, message }");
       const { reply } = await assistant.respond("web", parsed.data.sessionId, parsed.data.message);
       return sendJson(res, 200, reply);
+    }
+
+    if (method === "GET" && url.pathname === "/api/chat/history") {
+      const parsed = sessionId.safeParse(url.searchParams.get("sessionId"));
+      if (!parsed.success) throw new HttpError(400, "expected ?sessionId=");
+      const turns = assistant.history("web", parsed.data).map(({ role, text }) => ({ role, text }));
+      return sendJson(res, 200, { turns });
     }
 
     if (method === "POST" && url.pathname === "/webhooks/line") {

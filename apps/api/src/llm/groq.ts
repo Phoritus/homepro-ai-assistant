@@ -15,8 +15,10 @@ const TAXONOMY = `Intents (a message may carry more than one; list them in the o
 - "staff_request": wants a human.
 - "greeting": a greeting with no request.
 - "closing": thanks, goodbye, or ending the chat with no new request.
-- "out_of_scope": anything else, including delivery areas or fees for new purchases, payment methods,
-    installments, installation, store hours, promotions, other products, and chit-chat.
+- "out_of_scope": a question about the shop that staff could answer but the above don't cover, including delivery
+    areas or fees for new purchases, payment methods, installments, installation, store hours, promotions, other products.
+- "off_topic": not about the shop at all: weather, jokes, news, general knowledge, chit-chat.
+    Mentioning hot weather while asking for a fan is "recommend", not "off_topic".
 Never use "recommend" or "product_info" just because a message mentions fans or buying; delivery, payment and
 installation questions are "out_of_scope" even when they mention a fan.
 Drop "greeting" or "closing" when the same message also carries a real request.`;
@@ -34,6 +36,10 @@ Fields (all required, use null when not stated):
 - roomSizeBand: "small", "medium" or "large" only if the shopper uses such a word and gives no area, else null.
 - budgetThb: maximum budget in Thai baht as a number, or null.
 - skus: every product code like "HP-F01" exactly as written, in order; empty array if none.
+- opener: one short, warm sentence in the message's language that acknowledges how the shopper feels or what
+  they are dealing with, such as sympathy for a damaged item or a hot bedroom. The shop's code writes the rest of the
+  reply, so the opener must not answer anything: no numbers, prices, product codes, stock, policies, returns,
+  warranty, delivery, orders, promises or questions. Use null for a bare greeting, a goodbye, or a bare number.
 
 If "awaiting" is "budget" and the message is just a number, that number is budgetThb and intents is ["recommend"].
 If "awaiting" is "room_size" and the message is just a number, that number is roomAreaSqm and intents is ["recommend"].`;
@@ -43,7 +49,7 @@ const nullable = (type: string) => ({ type: [type, "null"] });
 const READING_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["intents", "asks", "language", "roomAreaSqm", "roomSizeBand", "budgetThb", "skus"],
+  required: ["intents", "asks", "language", "roomAreaSqm", "roomSizeBand", "budgetThb", "skus", "opener"],
   properties: {
     intents: { type: "array", minItems: 1, items: { type: "string", enum: LLM_INTENTS } },
     asks: { type: ["string", "null"], enum: [...PRODUCT_ASKS, null] },
@@ -52,6 +58,7 @@ const READING_SCHEMA = {
     roomSizeBand: { type: ["string", "null"], enum: ["small", "medium", "large", null] },
     budgetThb: nullable("number"),
     skus: { type: "array", items: { type: "string" } },
+    opener: nullable("string"),
   },
 };
 

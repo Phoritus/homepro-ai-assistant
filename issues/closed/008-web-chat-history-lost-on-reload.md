@@ -1,5 +1,6 @@
 # 008: Web Chat loses the visible history on reload while the server keeps the context
 
+- **Status:** Closed 2026-11-22 on branch `fix/issues-008-015`. `GET /api/chat/history?sessionId=…` returns the live session's turns (role and text). The page renders them on load, and a "New chat" button rotates the `sessionId`. Checked in headless Chrome: the turns survive a reload, and New chat stays empty after another reload.
 - **Severity:** Medium
 - **Spec:** §3.1, "Build a lightweight browser-based chat interface displaying conversation history". §1, session memory
 - **Path:** Web Chat page

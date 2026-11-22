@@ -1,5 +1,6 @@
 # 014: "What do you have in stock?" is handed off to staff although the catalog answers it
 
+- **Status:** Closed 2026-11-22 in `1243215`. New `browse_catalog` intent lists the in-stock fans with price and room size, then asks for the missing slots. Probe `4.1-browse` in `eval-llm.ts`.
 - **Severity:** High
 - **Spec:** §4.1 (recommend from the fixture catalog), §4.2.3 (hand off only queries *outside* the fixture data)
 - **Path:** LLM (`openai/gpt-oss-120b`, branch `feat/intent-routing`). The keyword rules also have no route for it
