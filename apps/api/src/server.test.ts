@@ -89,14 +89,30 @@ describe("Web Chat history", () => {
     const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
     const history = (id: string) => fetch(`${base}/api/chat/history?sessionId=${id}`);
 
-    await fetch(`${base}/api/chat`, { method: "POST", body: JSON.stringify({ sessionId: "web-reload-1", message: "I need a fan for my 12 m² bedroom" }) });
+    const chat = (message: string) => fetch(`${base}/api/chat`, { method: "POST", body: JSON.stringify({ sessionId: "web-reload-1", message }) });
+    await chat("I need a fan for my 12 m² bedroom");
+    await chat("My budget is 1,000 baht");
+    await chat("Where is my order?");
 
     const res = await history("web-reload-1");
     expect(res.status).toBe(200);
-    const { turns } = (await res.json()) as { turns: { role: string; text: string }[] };
+    const { turns } = (await res.json()) as { turns: unknown[] };
     expect(turns).toEqual([
       { role: "shopper", text: "I need a fan for my 12 m² bedroom" },
-      { role: "assistant", text: expect.stringContaining("budget") },
+      { role: "assistant", text: expect.stringContaining("budget"), language: "en", actions: [], handedOff: false },
+      { role: "shopper", text: "My budget is 1,000 baht" },
+      {
+        role: "assistant",
+        text: expect.stringContaining("HP-F01"),
+        language: "en",
+        actions: [
+          { kind: "view_product", sku: "HP-F01", url: "http://demo.test/demo/products/HP-F01" },
+          { kind: "demo_checkout", sku: "HP-F01", url: "http://demo.test/demo/checkout?sku=HP-F01" },
+        ],
+        handedOff: false,
+      },
+      { role: "shopper", text: "Where is my order?" },
+      { role: "assistant", text: expect.stringContaining("staff"), language: "en", actions: [], handedOff: true },
     ]);
     expect(await (await history("web-other-1")).json()).toEqual({ turns: [] });
     expect((await history("no")).status).toBe(400);

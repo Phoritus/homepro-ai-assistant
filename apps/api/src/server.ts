@@ -89,7 +89,7 @@ export function createApp({ assistant, log, line }: ServerDeps) {
     if (method === "GET" && url.pathname === "/api/chat/history") {
       const parsed = sessionId.safeParse(url.searchParams.get("sessionId"));
       if (!parsed.success) throw new HttpError(400, "expected ?sessionId=");
-      const turns = assistant.history("web", parsed.data).map(({ role, text }) => ({ role, text }));
+      const turns = assistant.history("web", parsed.data).map(({ at, ...turn }) => turn);
       return sendJson(res, 200, { turns });
     }
 

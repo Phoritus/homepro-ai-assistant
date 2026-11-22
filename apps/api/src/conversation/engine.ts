@@ -141,7 +141,7 @@ export function handleTurn(req: TurnRequest): TurnResult {
           policyRef: "SUP-02",
           shopperLanguage: language,
           knownContext: known,
-          lastMessages: historyWithShopper.slice(-HANDOFF_MESSAGES),
+          lastMessages: historyWithShopper.slice(-HANDOFF_MESSAGES).map(({ role, text, at }) => ({ role, text, at })),
           createdAt: at,
         }
       : null;
@@ -152,7 +152,7 @@ export function handleTurn(req: TurnRequest): TurnResult {
     language,
     known,
     awaiting,
-    history: [...historyWithShopper, { role: "assistant", text, at }],
+    history: [...historyWithShopper, { role: "assistant", text, at, language, actions, handedOff: handoffPacket !== null }],
     updatedAt: at,
   };
   return { session: next, decisions, reply };

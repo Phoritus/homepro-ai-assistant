@@ -17,11 +17,17 @@ export type HandoffReason =
   | "shopper_request"
   | "out_of_scope";
 
-export interface Turn {
+/** One line of conversation as staff see it in a Handoff Packet. */
+export interface Message {
   role: "shopper" | "assistant";
   text: string;
   at: string;
 }
+
+/** A session history entry. Assistant turns keep what they offered so a reloaded Web Chat can redraw it. */
+export type Turn =
+  | (Message & { role: "shopper" })
+  | (Message & { role: "assistant"; language: Language; actions: ReplyAction[]; handedOff: boolean });
 
 export interface KnownContext {
   roomSizeBand?: RoomSizeBand;
@@ -38,7 +44,7 @@ export interface HandoffPacket {
   policyRef: PolicyId | null;
   shopperLanguage: Language;
   knownContext: KnownContext;
-  lastMessages: Turn[];
+  lastMessages: Message[];
   createdAt: string;
 }
 

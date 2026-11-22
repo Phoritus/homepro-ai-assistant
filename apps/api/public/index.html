@@ -2,66 +2,136 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
 <title>Demo Store Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
 <style>
   :root {
-    --bg: #f6f5f1; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6a64; --line: #e3e1d9;
-    --me: #1f4e79; --me-ink: #ffffff; --bot: #f0eee7; --accent: #c2410c; --warn-bg: #fff4d6; --warn-line: #e6c36a;
+    --page: #f2f4f7; --panel: #ffffff; --ink: #18202b; --muted: #5a6474; --line: #dde2e9;
+    --brand: #e4570f; --brand-ink: #ffffff; --brand-deep: #c2470a;
+    --me: #243447; --me-ink: #ffffff; --bot: #ffffff;
+    --info-bg: #eaf1fb; --info-line: #a9c1e6; --info-ink: #1e3a66;
+    --error-bg: #fdecec; --error-line: #eba3a3; --error-ink: #8a1f1f;
+    --focus: #2f6fdb;
   }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #161614; --panel: #1f1f1c; --ink: #ecebe6; --muted: #a09f98; --line: #34332e;
-      --me: #3b6ea5; --me-ink: #ffffff; --bot: #2a2926; --accent: #f97316; --warn-bg: #3a3220; --warn-line: #7a6430; }
+    :root {
+      --page: #12161c; --panel: #1b212a; --ink: #e8ecf1; --muted: #9aa4b2; --line: #2c3440;
+      --brand: #f26a22; --brand-ink: #ffffff; --brand-deep: #d4560f;
+      --me: #34506f; --me-ink: #ffffff; --bot: #1b212a;
+      --info-bg: #1a2a40; --info-line: #355a8c; --info-ink: #c9dbf5;
+      --error-bg: #3a1c1c; --error-line: #7a3434; --error-ink: #f5c9c9;
+      --focus: #7aa7f0;
+    }
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, "Noto Sans Thai", sans-serif; }
-  main { max-width: 44rem; margin: 0 auto; min-height: 100dvh; display: flex; flex-direction: column; padding: 0 16px; }
-  header { padding: 20px 0 12px; border-bottom: 1px solid var(--line); }
-  header .title { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  header h1 { margin: 0; font-size: 1.15rem; }
-  #new-chat { font: inherit; font-size: .8125rem; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
-  header p { margin: 4px 0 0; color: var(--muted); font-size: .875rem; }
-  #log { flex: 1; overflow-y: auto; padding: 16px 0; display: flex; flex-direction: column; gap: 10px; }
-  .msg { max-width: 85%; padding: 10px 14px; border-radius: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 16px/1.55 "IBM Plex Sans Thai", system-ui, "Noto Sans Thai", sans-serif; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  .app { height: 100dvh; display: flex; flex-direction: column; }
+  .wrap { width: 100%; max-width: 44rem; margin: 0 auto; padding: 0 16px; }
+
+  header { background: var(--brand); color: var(--brand-ink); }
+  header .wrap { display: flex; align-items: center; gap: 12px; padding-top: 14px; padding-bottom: 14px; }
+  .mark { flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--brand-ink); color: var(--brand); display: grid; place-items: center; }
+  .brand { flex: 1; min-width: 0; }
+  .brand h1 { margin: 0; font-size: 1.125rem; font-weight: 600; line-height: 1.25; }
+  .brand p { margin: 0; font-size: .875rem; opacity: .92; }
+  #new-chat { font: inherit; font-size: .875rem; font-weight: 500; color: var(--brand-ink); background: transparent; border: 1.5px solid currentColor; border-radius: 999px; padding: 5px 14px; cursor: pointer; }
+  #new-chat:hover { background: rgb(255 255 255 / .14); }
+  #new-chat:focus-visible { outline-color: var(--brand-ink); }
+  .demo-note { margin: 0; padding: 8px 0; font-size: .8125rem; color: var(--muted); border-bottom: 1px solid var(--line); }
+
+  #log { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+  #log .wrap { display: flex; flex-direction: column; gap: 12px; padding-top: 16px; padding-bottom: 16px; }
+  .msg { max-width: 85%; padding: 10px 14px; border-radius: 16px; white-space: pre-wrap; overflow-wrap: anywhere; }
   .shopper { align-self: flex-end; background: var(--me); color: var(--me-ink); border-bottom-right-radius: 4px; }
-  .assistant { align-self: flex-start; background: var(--bot); border-bottom-left-radius: 4px; }
-  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-  .actions a { font-size: .875rem; padding: 6px 12px; border: 1px solid var(--accent); color: var(--accent); border-radius: 999px; text-decoration: none; }
-  .actions a.primary { background: var(--accent); color: #fff; }
-  .handoff { margin-top: 10px; font-size: .8125rem; background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 8px; padding: 6px 10px; }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0; }
-  .chips button { font: inherit; font-size: .8125rem; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
-  form { display: flex; gap: 8px; padding: 12px 0 20px; border-top: 1px solid var(--line); }
-  input { flex: 1; min-width: 0; font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
-  form button { font: inherit; padding: 10px 16px; border-radius: 10px; border: 0; background: var(--me); color: var(--me-ink); cursor: pointer; }
-  form button:disabled { opacity: .6; cursor: wait; }
+  .assistant { align-self: flex-start; background: var(--bot); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+  .welcome .th { display: block; margin-top: 4px; color: var(--muted); }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; white-space: normal; }
+  .actions a { font-size: .875rem; font-weight: 500; padding: 7px 14px; border-radius: 10px; text-decoration: none; border: 1.5px solid var(--brand); color: var(--brand-deep); background: transparent; }
+  .actions a:hover { background: color-mix(in srgb, var(--brand) 10%, transparent); }
+  .actions a.primary { background: var(--brand); color: var(--brand-ink); }
+  .actions a.primary:hover { background: var(--brand-deep); border-color: var(--brand-deep); }
+  @media (prefers-color-scheme: dark) { .actions a { color: var(--brand); } .actions a.primary { color: var(--brand-ink); } }
+
+  .handoff { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; font-size: .8125rem; white-space: normal; background: var(--info-bg); color: var(--info-ink); border: 1px solid var(--info-line); border-radius: 10px; padding: 8px 10px; }
+  .handoff svg { flex: none; margin-top: 2px; }
+
+  .error { align-self: flex-start; max-width: 85%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 14px; border-radius: 12px; background: var(--error-bg); color: var(--error-ink); border: 1px solid var(--error-line); font-size: .9375rem; }
+  .error button { font: inherit; font-size: .875rem; font-weight: 500; color: inherit; background: transparent; border: 1.5px solid currentColor; border-radius: 999px; padding: 3px 12px; cursor: pointer; }
+
+  .typing { display: inline-flex; gap: 5px; align-items: center; padding: 14px 16px; }
+  .typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: blink 1.2s infinite ease-in-out; }
+  .typing span:nth-child(2) { animation-delay: .15s; }
+  .typing span:nth-child(3) { animation-delay: .3s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+  @media (prefers-reduced-motion: reduce) { .typing span { animation: none; opacity: .6; } }
+
+  footer { border-top: 1px solid var(--line); background: var(--panel); }
+  #chips { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 10px; }
+  #chips[hidden] { display: none; }
+  #chips button { font: inherit; font-size: .8125rem; color: var(--ink); background: var(--page); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+  #chips button:hover { border-color: var(--brand); }
+  form { display: flex; gap: 8px; padding-top: 10px; padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+  #input { flex: 1; min-width: 0; font: inherit; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--page); color: var(--ink); }
+  #input:focus-visible { outline-offset: 0; border-color: var(--focus); }
+  #send { flex: none; width: 46px; border-radius: 12px; border: 0; background: var(--brand); color: var(--brand-ink); cursor: pointer; display: grid; place-items: center; }
+  #send:hover { background: var(--brand-deep); }
+  #send:disabled { opacity: .5; cursor: not-allowed; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
 </head>
 <body>
-<main>
+<div class="app">
   <header>
-    <div class="title">
-      <h1>Demo Store Assistant</h1>
+    <div class="wrap">
+      <div class="mark" aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="2.2"/><path d="M12 9.8c-.6-2.9.3-6.3 3.4-6.6 2.6-.2 3.1 3.4.4 4.7-1.3.6-2.6 1.1-3.8 1.9zM14.2 12c2.9-.6 6.3.3 6.6 3.4.2 2.6-3.4 3.1-4.7.4-.6-1.3-1.1-2.6-1.9-3.8zM12 14.2c.6 2.9-.3 6.3-3.4 6.6-2.6.2-3.1-3.4-.4-4.7 1.3-.6 2.6-1.1 3.8-1.9zM9.8 12c-2.9.6-6.3-.3-6.6-3.4-.2-2.6 3.4-3.1 4.7-.4.6 1.3 1.1 2.6 1.9 3.8z"/></svg>
+      </div>
+      <div class="brand">
+        <h1>Demo Store Assistant</h1>
+        <p>Fan advice, returns and orders</p>
+      </div>
       <button type="button" id="new-chat">New chat</button>
     </div>
-    <p>Fictional catalog. Links are demo-only. No payments, orders or real tickets.</p>
   </header>
-  <div id="log" aria-live="polite"></div>
-  <div class="chips" id="chips"></div>
-  <form id="form">
-    <input id="input" autocomplete="off" maxlength="1000"placeholder="e.g. My bedroom is 12 m², budget 1,000 baht" aria-label="Message">
-    <button id="send">Send</button>
-  </form>
-</main>
+  <div class="wrap"><p class="demo-note">Demo with a fictional catalog. Links never take payment or create an order.</p></div>
+
+  <div id="log" role="log" aria-live="polite" aria-label="Conversation"><div class="wrap" id="turns"></div></div>
+
+  <footer>
+    <div class="wrap">
+      <div id="chips" aria-label="Example questions"></div>
+      <form id="form">
+        <label for="input" class="sr-only">Message</label>
+        <input id="input" autocomplete="off" maxlength="1000" placeholder="e.g. My bedroom is 12 m², budget 1,000 baht">
+        <button id="send" aria-label="Send">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7"/></svg>
+        </button>
+      </form>
+    </div>
+  </footer>
+</div>
 <script>
   const log = document.getElementById("log");
+  const turns = document.getElementById("turns");
   const form = document.getElementById("form");
   const input = document.getElementById("input");
   const sendBtn = document.getElementById("send");
-  const SAMPLES = ["I need a fan for my 12 m² bedroom", "Do you have HP-F03?", "Can I return a fan?", "Where is my order?", "ห้อง 20 ตร.ม. งบ 1500 บาท"];
+  const chips = document.getElementById("chips");
 
+  const SAMPLES = ["I need a fan for my 12 m² bedroom", "ห้อง 20 ตร.ม. งบ 1500 บาท", "Do you have HP-F03?", "Can I return a fan?", "Where is my order?"];
   const SESSION_KEY = "homepro.sessionId";
-  const WELCOME = "Hi! Tell me your room size and budget and I'll recommend a fan, or ask about returns or an order.";
+  const REPLY_TIMEOUT_MS = 30000;
+  const LABELS = {
+    en: { view: (sku) => "View " + sku, checkout: "Demo checkout", handoff: "Passed to our staff. This demo creates no real ticket." },
+    th: { view: (sku) => "ดู " + sku, checkout: "สั่งซื้อ (เดโม)", handoff: "ส่งต่อให้เจ้าหน้าที่แล้ว เดโมนี้ไม่มีการเปิดเรื่องจริง" },
+  };
 
   function freshSession() {
     const id = "web-" + crypto.randomUUID();
@@ -72,68 +142,126 @@
     try { return localStorage.getItem(SESSION_KEY); } catch { return null; }
   }
   let SESSION = savedSession() ?? freshSession();
+  let busy = false;
+
+  function add(el) {
+    turns.appendChild(el);
+    log.scrollTop = log.scrollHeight;
+    return el;
+  }
 
   function bubble(role, text) {
     const el = document.createElement("div");
     el.className = "msg " + role;
     el.textContent = text;
-    log.appendChild(el);
-    log.scrollTop = log.scrollHeight;
-    return el;
+    return add(el);
   }
 
-  function renderReply(reply) {
-    const el = bubble("assistant", reply.text);
-    if (reply.actions.length) {
+  function welcome() {
+    const el = bubble("assistant welcome", "Hi! Tell me your room size and budget and I'll suggest a fan. I can also help with returns and orders.");
+    const th = document.createElement("span");
+    th.className = "th";
+    th.lang = "th";
+    th.textContent = "บอกขนาดห้องและงบประมาณ แล้วเราจะแนะนำพัดลมให้ค่ะ หรือสอบถามเรื่องการคืนสินค้าและคำสั่งซื้อได้";
+    el.appendChild(th);
+  }
+
+  /** Draws an assistant turn, live or restored: { text, language, actions, handedOff }. */
+  function assistantTurn(turn) {
+    const el = bubble("assistant", turn.text);
+    el.lang = turn.language;
+    const labels = LABELS[turn.language] ?? LABELS.en;
+    if (turn.actions.length) {
       const row = document.createElement("div");
       row.className = "actions";
-      for (const a of reply.actions) {
+      for (const a of turn.actions) {
         const link = document.createElement("a");
         link.href = a.url;
         link.target = "_blank";
         link.rel = "noopener";
-        link.textContent = a.kind === "demo_checkout" ? (reply.language === "th" ? "สั่งซื้อ (เดโม)" : "Demo checkout") : (reply.language === "th" ? "ดู " : "View ") + a.sku;
+        link.textContent = a.kind === "demo_checkout" ? labels.checkout : labels.view(a.sku);
         if (a.kind === "demo_checkout") link.className = "primary";
         row.appendChild(link);
       }
       el.appendChild(row);
     }
-    if (reply.handoff) {
+    if (turn.handedOff) {
       const note = document.createElement("div");
       note.className = "handoff";
-      note.textContent = reply.language === "th" ? "ส่งต่อเจ้าหน้าที่แล้ว (เดโม ไม่มีการเปิดเรื่องจริง)" : "Handed to staff (demo: no real ticket created)";
+      note.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>';
+      note.append(labels.handoff);
       el.appendChild(note);
     }
   }
 
-  async function send(text) {
-    bubble("shopper", text);
-    sendBtn.disabled = true;
+  function typing() {
+    const el = document.createElement("div");
+    el.className = "msg assistant typing";
+    el.setAttribute("role", "status");
+    el.setAttribute("aria-label", "Assistant is typing");
+    el.innerHTML = "<span></span><span></span><span></span>";
+    return add(el);
+  }
+
+  function failure(text) {
+    const el = document.createElement("div");
+    el.className = "error";
+    el.setAttribute("role", "alert");
+    el.append("No reply from the assistant. Check your connection, then try again.");
+    const retry = document.createElement("button");
+    retry.type = "button";
+    retry.textContent = "Try again";
+    retry.addEventListener("click", () => { el.remove(); ask(text); });
+    el.appendChild(retry);
+    add(el);
+  }
+
+  function setBusy(on) {
+    busy = on;
+    sendBtn.disabled = on;
+    for (const b of chips.querySelectorAll("button")) b.disabled = on;
+  }
+
+  async function ask(text) {
+    setBusy(true);
+    const session = SESSION;
+    const dots = typing();
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sessionId: SESSION, message: text }),
+        body: JSON.stringify({ sessionId: session, message: text }),
+        signal: AbortSignal.timeout(REPLY_TIMEOUT_MS),
       });
       if (!res.ok) throw new Error("HTTP " + res.status);
-      renderReply(await res.json());
-    } catch (err) {
-      bubble("assistant", "Sorry, the assistant is unreachable right now. Please try again.");
+      const reply = await res.json();
+      dots.remove();
+      if (session !== SESSION) return;
+      assistantTurn({ text: reply.text, language: reply.language, actions: reply.actions, handedOff: reply.handoff !== null });
+    } catch {
+      dots.remove();
+      if (session === SESSION) failure(text);
     } finally {
-      sendBtn.disabled = false;
+      setBusy(false);
       input.focus();
     }
+  }
+
+  function send(text) {
+    if (busy) return;
+    chips.hidden = true;
+    bubble("shopper", text);
+    ask(text);
   }
 
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     const text = input.value.trim();
-    if (!text) return;
+    if (!text || busy) return;
     input.value = "";
     send(text);
   });
 
-  const chips = document.getElementById("chips");
   for (const s of SAMPLES) {
     const b = document.createElement("button");
     b.type = "button";
@@ -143,24 +271,34 @@
   }
 
   async function restore() {
-    bubble("assistant", WELCOME);
-    sendBtn.disabled = true;
+    welcome();
+    setBusy(true);
     try {
       const res = await fetch("/api/chat/history?sessionId=" + encodeURIComponent(SESSION));
-      if (res.ok) for (const turn of (await res.json()).turns) bubble(turn.role, turn.text);
+      if (res.ok) {
+        for (const turn of (await res.json()).turns) {
+          if (turn.role === "shopper") { bubble("shopper", turn.text); chips.hidden = true; }
+          else assistantTurn(turn);
+        }
+      }
     } catch {} finally {
-      sendBtn.disabled = false;
+      setBusy(false);
     }
+    await document.fonts.ready;
+    log.scrollTop = log.scrollHeight;
   }
 
   document.getElementById("new-chat").addEventListener("click", () => {
     SESSION = freshSession();
-    log.replaceChildren();
-    bubble("assistant", WELCOME);
+    turns.replaceChildren();
+    welcome();
+    chips.hidden = false;
+    input.value = "";
     input.focus();
   });
 
   restore();
+  input.focus();
 </script>
 </body>
 </html>
