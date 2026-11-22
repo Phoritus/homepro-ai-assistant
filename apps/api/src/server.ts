@@ -94,9 +94,15 @@ export function createApp({ assistant, log, line }: ServerDeps) {
       }
       const events = parseLineWebhook(parseJson(raw));
       if (events === null) throw new HttpError(400, "not a LINE webhook body");
+      // Reply tokens are single-use and expire, so a LINE redelivery can never fix a failed reply:
+      // log it, finish the batch, and acknowledge with 200.
       for (const ev of events) {
-        const { reply } = await assistant.respond("line", ev.userId, ev.text);
-        await line.client.reply(ev.replyToken, toLineMessages(reply));
+        try {
+          const { reply } = await assistant.respond("line", ev.userId, ev.text);
+          await line.client.reply(ev.replyToken, toLineMessages(reply));
+        } catch (err) {
+          log.warn("line_reply_failed", { userId: ev.userId, error: err instanceof Error ? err.message : String(err) });
+        }
       }
       return sendJson(res, 200, { ok: true });
     }

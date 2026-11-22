@@ -1,0 +1,60 @@
+import { createHmac } from "node:crypto";
+import type { AddressInfo } from "node:net";
+import { afterEach, describe, expect, it } from "vitest";
+import { createAssistant } from "./assistant.ts";
+import type { LineMessage, LineReplyClient } from "./channels/line.ts";
+import { createMemorySessionStore } from "./conversation/session.ts";
+import type { Logger } from "./log.ts";
+import { createHttpServer } from "./server.ts";
+
+const SECRET = "test-secret";
+
+function recordingLogger() {
+  const lines: { level: string; event: string; fields: Record<string, unknown> }[] = [];
+  const at = (level: string) => (event: string, fields: Record<string, unknown> = {}) => void lines.push({ level, event, fields });
+  const log: Logger = { info: at("info"), warn: at("warn"), error: at("error") };
+  return { log, lines };
+}
+
+const textEvent = (replyToken: string, userId: string, text: string) =>
+  ({ type: "message", replyToken, source: { type: "user", userId }, message: { type: "text", text } });
+
+let close: (() => void) | undefined;
+afterEach(() => close?.());
+
+async function start(client: LineReplyClient, log: Logger) {
+  const assistant = createAssistant({ sessions: createMemorySessionStore(60_000), llm: null, log, baseUrl: "http://demo.test" });
+  const server = createHttpServer({ assistant, log, line: { channelSecret: SECRET, client } });
+  await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+  close = () => server.close();
+  const { port } = server.address() as AddressInfo;
+  return async (events: unknown[]) => {
+    const body = JSON.stringify({ events });
+    return fetch(`http://127.0.0.1:${port}/webhooks/line`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-line-signature": createHmac("sha256", SECRET).update(body).digest("base64") },
+      body,
+    });
+  };
+}
+
+describe("LINE webhook", () => {
+  it("answers 200 and still replies to later events when one reply fails", async () => {
+    const delivered: { replyToken: string; messages: LineMessage[] }[] = [];
+    const client: LineReplyClient = {
+      async reply(replyToken, messages) {
+        if (replyToken === "expired") throw new Error('line reply http 400: {"message":"Invalid reply token"}');
+        delivered.push({ replyToken, messages });
+      },
+    };
+    const { log, lines } = recordingLogger();
+    const post = await start(client, log);
+
+    const res = await post([textEvent("expired", "U1", "hi"), textEvent("fresh", "U2", "Can I return my fan?")]);
+
+    expect(res.status).toBe(200);
+    expect(delivered.map((d) => d.replyToken)).toEqual(["fresh"]);
+    expect(lines).toContainEqual(expect.objectContaining({ level: "warn", event: "line_reply_failed", fields: expect.objectContaining({ error: expect.stringContaining("Invalid reply token") }) }));
+    expect(lines.some((l) => l.event === "request_failed")).toBe(false);
+  });
+});
