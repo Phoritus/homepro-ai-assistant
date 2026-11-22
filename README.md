@@ -170,10 +170,11 @@ When a handoff happens, the shopper sees the SUP-02 notice. Staff receive this p
 
 - Sessions live in process memory. A restart forgets every conversation, and more than one server instance would split a shopper's history.
 - Without an LLM, the keyword rules recognise common English and Thai phrasings only. Anything they can't read gets the fallback message, not a handoff.
+- Groq's free tier rate-limits (HTTP 429) after a short burst, about 20 quick requests in the audit. The client retries a 429 once after `retry-after` (1 s if absent) when that still fits in `LLM_TIMEOUT_MS`. After that the turn falls back to keyword rules and logs `llm_rate_limited`, so the pilot can count those turns. Use a paid Groq key for the pilot.
 - Concurrent messages in the same session can overwrite each other's session update, because the last write wins.
 - Live LINE delivery is unverified in the recorded results, which use the stub reply client.
 - The checkout and product pages are demo placeholders. No order is created.
 
 ## AI disclosure
 
-This code and documentation were written with an AI coding assistant (Claude Code, Anthropic). Its output was checked by the typecheck, by 71 automated tests that include every spec scenario over real HTTP, by `npm audit`, and by reading the actual reply text from a running server.
+This code and documentation were written with an AI coding assistant (Claude Code, Anthropic). Its output was checked by the typecheck, by 85 automated tests that include every spec scenario over real HTTP, by `npm audit`, and by reading the actual reply text from a running server.
