@@ -190,8 +190,11 @@ export function render(decision: Decision, language: Language, baseUrl: string):
     }
     case "policy":
       return { text: t.returns(POLICIES[decision.policyId].text[language]), actions: [] };
-    case "handoff":
-      return { text: t.handoff(decision.reason, POLICIES["SUP-02"].text[language]), actions: [] };
+    case "handoff": {
+      const { scope, disclosure } = POLICIES["SUP-02"];
+      const inScope = decision.reason === "order_status" || decision.reason === "damaged_delivery";
+      return { text: t.handoff(decision.reason, inScope ? `${scope[language]} ${disclosure[language]}` : disclosure[language]), actions: [] };
+    }
     case "fallback":
       return { text: t.fallback, actions: [] };
   }
