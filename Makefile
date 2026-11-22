@@ -40,7 +40,7 @@ scenarios-llm:
 	npm run scenarios -- --llm
 
 eval:
-	npm run eval:llm -w @homepro/api
+	npm run eval:llm
 
 verify:
 	$(VERIFY) start --port $(VERIFY_PORT)

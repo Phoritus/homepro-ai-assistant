@@ -10,7 +10,8 @@
     "start": "npm run start -w @homepro/api",
     "test": "npm run typecheck && npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "scenarios": "npm run scenarios -w @homepro/api --"
+    "scenarios": "npm run scenarios -w @homepro/api --",
+    "eval:llm": "npm run eval:llm -w @homepro/api"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
