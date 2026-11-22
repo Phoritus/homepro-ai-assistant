@@ -42,6 +42,7 @@ interface Phrases {
   skuAvailable: (p: Product) => string;
   skuOutOfStock: (p: Product) => string;
   skuOverBudget: (p: Product, budget: number) => string;
+  skuWrongSize: (p: Product, requested: RoomSizeBand) => string;
   askBudgetForAlternative: string;
   returns: (policyText: string) => string;
   handoff: (reason: HandoffReason, policyText: string) => string;
@@ -83,6 +84,7 @@ const EN: Phrases = {
   skuAvailable: (p) => `${EN.item(p)}, for a ${EN.band[p.band]}. ${EN.stock(p)}`,
   skuOutOfStock: (p) => `${EN.item(p)} is out of stock.`,
   skuOverBudget: (p, budget) => `${EN.item(p)} is above your ${thb(budget)} budget.`,
+  skuWrongSize: (p, requested) => `${p.sku} is sized for a ${EN.band[p.band]}, not your ${EN.band[requested]}.`,
   askBudgetForAlternative: "What's your budget in THB? I'll look for an in-stock alternative within it.",
   returns: (text) => `Returns (policy SUP-01): ${text} If you'd like, type "staff" and I'll pass your request on.`,
   handoff: (reason, text) =>
@@ -129,6 +131,7 @@ const TH: Phrases = {
   skuAvailable: (p) => `${TH.item(p)} เหมาะกับ${TH.band[p.band]} ${TH.stock(p)}`,
   skuOutOfStock: (p) => `${TH.item(p)} สินค้าหมดค่ะ`,
   skuOverBudget: (p, budget) => `${TH.item(p)} เกินงบ ${thb(budget)} ของคุณค่ะ`,
+  skuWrongSize: (p, requested) => `${p.sku} เหมาะกับ${TH.band[p.band]} ไม่ใช่${TH.band[requested]}ของคุณค่ะ`,
   askBudgetForAlternative: "งบประมาณเท่าไรคะ จะหาทางเลือกที่มีสินค้าภายในงบให้ค่ะ",
   returns: (text) => `การคืนสินค้า (นโยบาย SUP-01): ${text} หากต้องการ พิมพ์ "เจ้าหน้าที่" เพื่อส่งคำขอต่อได้ค่ะ`,
   handoff: (reason, text) =>
@@ -184,6 +187,10 @@ export function render(decision: Decision, language: Language, baseUrl: string):
       const o = decision.outcome;
       if (o.kind === "unknown_sku") return { text: t.unknownSku(o.asked, CATALOG.map((p) => p.sku).join(", ")), actions: [] };
       if (o.kind === "available") return { text: t.skuAvailable(o.product), actions: offer(o.product) };
+      if (o.kind === "wrong_size") {
+        if (o.followUp === null) return { text: `${t.skuWrongSize(o.product, o.requestedBand)} ${t.askBudgetForAlternative}`, actions: [] };
+        return prefixed(t.skuWrongSize(o.product, o.requestedBand), matchText(o.followUp, false));
+      }
       if (o.kind === "over_budget") return prefixed(t.skuOverBudget(o.product, o.budgetThb), matchText(o.followUp, false));
       if (o.followUp === null) return { text: `${t.skuOutOfStock(o.product)} ${t.askBudgetForAlternative}`, actions: [] };
       return prefixed(t.skuOutOfStock(o.product), matchText(o.followUp, false));

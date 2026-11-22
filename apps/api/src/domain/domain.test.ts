@@ -146,19 +146,19 @@ describe("isValidBudget", () => {
 
 describe("checkSku", () => {
   it("reports an unknown SKU without guessing", () => {
-    expect(checkSku("HP-Z99", 5000)).toEqual({ kind: "unknown_sku", asked: "HP-Z99" });
+    expect(checkSku("HP-Z99", 5000, undefined)).toEqual({ kind: "unknown_sku", asked: "HP-Z99" });
   });
 
   it("HP-F03 is out of stock and, once Budget is known, offers HP-F02 from the medium band", () => {
-    expect(checkSku("HP-F03", undefined)).toMatchObject({ kind: "out_of_stock", product: { sku: "HP-F03" }, followUp: null });
-    expect(checkSku("hp-f03", 2000)).toMatchObject({
+    expect(checkSku("HP-F03", undefined, undefined)).toMatchObject({ kind: "out_of_stock", product: { sku: "HP-F03" }, followUp: null });
+    expect(checkSku("hp-f03", 2000, undefined)).toMatchObject({
       kind: "out_of_stock",
       followUp: { kind: "alternative", alternative: { sku: "HP-F02" } },
     });
   });
 
   it("an in-stock SKU above Budget is refused and the cheaper neighbour offered", () => {
-    expect(checkSku("HP-F02", 1000)).toMatchObject({
+    expect(checkSku("HP-F02", 1000, undefined)).toMatchObject({
       kind: "over_budget",
       budgetThb: 1000,
       followUp: { kind: "alternative", alternative: { sku: "HP-F01" } },
@@ -166,7 +166,22 @@ describe("checkSku", () => {
   });
 
   it("an in-stock SKU within Budget, or with no Budget yet, is available", () => {
-    expect(checkSku("HP-F01", 890)).toMatchObject({ kind: "available", product: { sku: "HP-F01" } });
-    expect(checkSku("HP-F02", undefined)).toMatchObject({ kind: "available" });
+    expect(checkSku("HP-F01", 890, undefined)).toMatchObject({ kind: "available", product: { sku: "HP-F01" } });
+    expect(checkSku("HP-F02", undefined, undefined)).toMatchObject({ kind: "available" });
+  });
+
+  it("a SKU sized for another band than the shopper's is wrong_size, ahead of stock and budget", () => {
+    expect(checkSku("HP-F01", undefined, "medium")).toMatchObject({
+      kind: "wrong_size", product: { sku: "HP-F01" }, requestedBand: "medium", followUp: null,
+    });
+    expect(checkSku("HP-F01", 2000, "medium")).toMatchObject({
+      kind: "wrong_size", requestedBand: "medium", followUp: { kind: "valid_match", matches: [{ sku: "HP-F02" }] },
+    });
+    expect(checkSku("HP-F03", 2000, "small")).toMatchObject({ kind: "wrong_size" });
+  });
+
+  it("a SKU sized for the shopper's band is judged on stock and budget as before", () => {
+    expect(checkSku("HP-F01", undefined, "small")).toMatchObject({ kind: "available" });
+    expect(checkSku("HP-F03", undefined, "large")).toMatchObject({ kind: "out_of_stock" });
   });
 });

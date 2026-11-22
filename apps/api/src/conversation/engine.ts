@@ -51,10 +51,10 @@ interface Step {
 
 function decideSales(known: KnownContext, u: Understanding): Step {
   if (u.sku !== null) {
-    const outcome = checkSku(u.sku, known.budgetThb);
+    const outcome = checkSku(u.sku, known.budgetThb, known.roomSizeBand);
     // Asking about a SKU implies that product's room size when the shopper hasn't given one.
     const implied = outcome.kind === "unknown_sku" || known.roomSizeBand ? known : { ...known, roomSizeBand: outcome.product.band };
-    const awaiting = outcome.kind === "out_of_stock" && outcome.followUp === null ? "budget" : null;
+    const awaiting = (outcome.kind === "out_of_stock" || outcome.kind === "wrong_size") && outcome.followUp === null ? "budget" : null;
     return { decision: { kind: "sku", outcome }, known: implied, awaiting };
   }
   const { roomSizeBand: band, budgetThb: budget } = known;

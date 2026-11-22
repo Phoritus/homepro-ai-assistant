@@ -65,14 +65,28 @@ export function matchProducts(
 export type SkuOutcome =
   | { kind: "unknown_sku"; asked: string }
   | { kind: "available"; product: Product }
+  /** The product is sized for another band than the shopper's. `followUp` is null when Budget is unknown. */
+  | { kind: "wrong_size"; product: Product; requestedBand: RoomSizeBand; followUp: MatchOutcome | null }
   /** `followUp` is null when Budget is unknown: alternatives can't be chosen without it. */
   | { kind: "out_of_stock"; product: Product; followUp: MatchOutcome | null }
   | { kind: "over_budget"; product: Product; budgetThb: number; followUp: MatchOutcome };
 
-/** A shopper asking about one SKU. Alternatives are drawn from that product's own band. */
-export function checkSku(sku: string, budgetThb: number | undefined, catalog: readonly Product[] = CATALOG): SkuOutcome {
+/**
+ * A shopper asking about one SKU. A known room band that differs from the product's wins over stock and
+ * budget, and alternatives then come from the shopper's band. Otherwise they come from the product's own band.
+ */
+export function checkSku(
+  sku: string,
+  budgetThb: number | undefined,
+  knownBand: RoomSizeBand | undefined,
+  catalog: readonly Product[] = CATALOG,
+): SkuOutcome {
   const product = findProduct(sku, catalog);
   if (!product) return { kind: "unknown_sku", asked: sku };
+  if (knownBand !== undefined && knownBand !== product.band) {
+    const followUp = budgetThb === undefined ? null : matchProducts(knownBand, budgetThb, catalog);
+    return { kind: "wrong_size", product, requestedBand: knownBand, followUp };
+  }
   if (!inStock(product)) {
     const followUp = budgetThb === undefined ? null : matchProducts(product.band, budgetThb, catalog);
     return { kind: "out_of_stock", product, followUp };
