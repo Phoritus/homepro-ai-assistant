@@ -1,9 +1,12 @@
 import { randomUUID } from "node:crypto";
 import type { AssistantReply, Channel } from "@homepro/shared";
-import { handleTurn, type UnderstandingSource } from "./conversation/engine.ts";
+import { handleTurn } from "./conversation/engine.ts";
 import { newSession, sessionKey, type SessionStore } from "./conversation/session.ts";
 import { RateLimitedError, understandByKeywords, type UnderstandContext, type Understander, type Understanding } from "./conversation/understanding.ts";
 import type { Logger } from "./log.ts";
+
+/** "llm" when the model read the message; "rules" when the keyword understander did (no LLM, or it failed). */
+export type UnderstandingSource = "llm" | "rules";
 
 export interface AssistantDeps {
   sessions: SessionStore;
@@ -34,7 +37,7 @@ export function createAssistant({ sessions, llm, log, baseUrl, now = () => new D
       const started = Date.now();
       try {
         const understanding = await llm(text, ctx);
-        log.info("llm_ok", { ms: Date.now() - started, intent: understanding.intent });
+        log.info("llm_ok", { ms: Date.now() - started, intents: understanding.intents });
         return { understanding, source: "llm" };
       } catch (err) {
         if (err instanceof RateLimitedError) log.warn("llm_rate_limited", { ms: Date.now() - started, retryAfterMs: err.retryAfterMs });
@@ -52,14 +55,14 @@ export function createAssistant({ sessions, llm, log, baseUrl, now = () => new D
       const session = sessions.get(sessionKey(channel, userId), at) ?? newSession(channel, userId, at);
       const recentShopperMessages = session.history.filter((t) => t.role === "shopper").slice(-3).map((t) => t.text);
       const { understanding, source } = await understand(text, { awaiting: session.awaiting, recentShopperMessages });
-      const result = handleTurn({ session, text, understanding, source, now: at, newHandoffId: newId, baseUrl });
+      const result = handleTurn({ session, text, understanding, now: at, newHandoffId: newId, baseUrl });
       sessions.put(result.session);
       log.info("turn", {
         channel,
         session: session.key,
         source,
-        intent: understanding.intent,
-        decision: result.decision.kind,
+        intents: understanding.intents,
+        decisions: result.decisions.map((d) => d.kind),
         handoffId: result.reply.handoff?.handoffId,
       });
       if (result.reply.handoff) log.info("handoff_packet", { packet: result.reply.handoff });

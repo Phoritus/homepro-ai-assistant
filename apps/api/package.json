@@ -7,7 +7,8 @@
     "start": "node --env-file-if-exists=../../.env src/main.ts",
     "test": "node ../../node_modules/vitest/vitest.mjs run",
     "typecheck": "node ../../node_modules/typescript/bin/tsc -p .",
-    "scenarios": "node --env-file-if-exists=../../.env src/run-scenarios.ts"
+    "scenarios": "node --env-file-if-exists=../../.env src/run-scenarios.ts",
+    "eval:llm": "node --env-file-if-exists=../../.env src/eval-llm.ts"
   },
   "dependencies": {
     "@homepro/shared": "*",

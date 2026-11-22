@@ -6,7 +6,9 @@ import { POLICIES } from "../domain/policies.ts";
 /** What the engine decided for this turn. Rendering turns it into words; it adds no facts of its own. */
 export type Decision =
   | { kind: "greet" }
+  | { kind: "close" }
   | { kind: "ask"; missing: "room_size" | "budget" | "both"; known: KnownContext }
+  | { kind: "browse"; products: readonly Product[] }
   | { kind: "match"; outcome: MatchOutcome }
   | { kind: "sku"; outcome: SkuOutcome }
   | { kind: "policy"; policyId: "SUP-01" }
@@ -26,10 +28,12 @@ interface Phrases {
   sep: string;
   reason: Record<HandoffReason, string>;
   greet: string;
+  close: string;
   askBoth: string;
   askRoom: (budget: number) => string;
   askBudget: (band: RoomSizeBand) => string;
   item: (p: Product) => string;
+  browseIntro: string;
   fits: (p: Product, budget: number) => string;
   stock: (p: Product) => string;
   intro: (count: number) => string;
@@ -42,6 +46,7 @@ interface Phrases {
   skuAvailable: (p: Product) => string;
   skuOutOfStock: (p: Product) => string;
   skuOverBudget: (p: Product, budget: number) => string;
+  skuWrongSize: (p: Product, requested: RoomSizeBand) => string;
   askBudgetForAlternative: string;
   returns: (policyText: string) => string;
   handoff: (reason: HandoffReason, policyText: string) => string;
@@ -62,10 +67,12 @@ const EN: Phrases = {
     out_of_scope: "question outside what I can answer",
   },
   greet: `Hi! I'm the ${STORE_NAME} assistant. I can recommend a fan, explain returns, or pass you to staff. What size is your room (m²) and what's your budget (THB)?`,
+  close: "You're welcome! Message any time if you need a fan.",
   askBoth: "To recommend a fan, I need two things: your room size in m² and your budget in THB.",
   askRoom: (budget) => `Got it, your budget is ${thb(budget)}. What size is your room in m²?`,
   askBudget: (band) => `Got it, a ${EN.band[band]}. What's your budget in THB?`,
   item: (p) => `${p.sku} ${p.name.en}, ${thb(p.priceThb)}`,
+  browseIntro: "Here's what we have in stock now:",
   fits: (p, budget) => `Reason: sized for a ${EN.band[p.band]} and within your ${thb(budget)} budget.`,
   stock: (p) => `${p.stock} in stock at ${STORE_NAME}.`,
   intro: (n) => (n === 1 ? "Here's a fan that fits:" : `Here are ${n} fans that fit, cheapest first:`),
@@ -83,6 +90,7 @@ const EN: Phrases = {
   skuAvailable: (p) => `${EN.item(p)}, for a ${EN.band[p.band]}. ${EN.stock(p)}`,
   skuOutOfStock: (p) => `${EN.item(p)} is out of stock.`,
   skuOverBudget: (p, budget) => `${EN.item(p)} is above your ${thb(budget)} budget.`,
+  skuWrongSize: (p, requested) => `${EN.item(p)} is sized for a ${EN.band[p.band]}, not your ${EN.band[requested]}.`,
   askBudgetForAlternative: "What's your budget in THB? I'll look for an in-stock alternative within it.",
   returns: (text) => `Returns (policy SUP-01): ${text} If you'd like, type "staff" and I'll pass your request on.`,
   handoff: (reason, text) =>
@@ -108,10 +116,12 @@ const TH: Phrases = {
     out_of_scope: "คำถามที่อยู่นอกข้อมูลที่ตอบได้",
   },
   greet: `สวัสดีค่ะ ผู้ช่วยของ ${STORE_NAME} ยินดีให้บริการ แนะนำพัดลม อธิบายนโยบายคืนสินค้า หรือส่งต่อเจ้าหน้าที่ได้ค่ะ ห้องของคุณขนาดกี่ตารางเมตร และงบประมาณเท่าไรคะ`,
+  close: "ยินดีค่ะ หากต้องการพัดลมอีก ทักมาได้ตลอดเลยนะคะ",
   askBoth: "เพื่อแนะนำพัดลม ขอทราบขนาดห้อง (ตร.ม.) และงบประมาณ (บาท) ค่ะ",
   askRoom: (budget) => `รับทราบค่ะ งบประมาณ ${thb(budget)} ห้องของคุณขนาดกี่ตารางเมตรคะ`,
   askBudget: (band) => `รับทราบค่ะ ${TH.band[band]} งบประมาณเท่าไรคะ`,
   item: (p) => `${p.sku} ${p.name.th} ราคา ${thb(p.priceThb)}`,
+  browseIntro: "สินค้าที่มีอยู่ตอนนี้ค่ะ:",
   fits: (p, budget) => `เหตุผล: เหมาะกับ${TH.band[p.band]} และอยู่ในงบ ${thb(budget)} ของคุณ`,
   stock: (p) => `มีสินค้า ${p.stock} ชิ้นที่ ${STORE_NAME}`,
   intro: (n) => (n === 1 ? "พัดลมที่เหมาะกับคุณ:" : `พัดลม ${n} รุ่นที่เหมาะกับคุณ เรียงจากราคาต่ำสุด:`),
@@ -129,6 +139,7 @@ const TH: Phrases = {
   skuAvailable: (p) => `${TH.item(p)} เหมาะกับ${TH.band[p.band]} ${TH.stock(p)}`,
   skuOutOfStock: (p) => `${TH.item(p)} สินค้าหมดค่ะ`,
   skuOverBudget: (p, budget) => `${TH.item(p)} เกินงบ ${thb(budget)} ของคุณค่ะ`,
+  skuWrongSize: (p, requested) => `${TH.item(p)} เหมาะกับ${TH.band[p.band]} ไม่ใช่${TH.band[requested]}ของคุณค่ะ`,
   askBudgetForAlternative: "งบประมาณเท่าไรคะ จะหาทางเลือกที่มีสินค้าภายในงบให้ค่ะ",
   returns: (text) => `การคืนสินค้า (นโยบาย SUP-01): ${text} หากต้องการ พิมพ์ "เจ้าหน้าที่" เพื่อส่งคำขอต่อได้ค่ะ`,
   handoff: (reason, text) =>
@@ -144,7 +155,18 @@ const TH: Phrases = {
 
 const PHRASES: Record<Language, Phrases> = { en: EN, th: TH };
 
-export function render(decision: Decision, language: Language, baseUrl: string): Rendered {
+/** Renders each decision in order, joined by a blank line, with duplicate actions removed. */
+export function render(decisions: Decision[], language: Language, baseUrl: string): Rendered {
+  const parts = decisions.map((d) => renderOne(d, language, baseUrl));
+  const seen = new Set<string>();
+  const actions = parts.flatMap((p) => p.actions).filter((a) => {
+    const key = `${a.kind}:${a.sku}`;
+    return seen.has(key) ? false : (seen.add(key), true);
+  });
+  return { text: parts.map((p) => p.text).join("\n\n"), actions };
+}
+
+function renderOne(decision: Decision, language: Language, baseUrl: string): Rendered {
   const t = PHRASES[language];
   const view = (sku: string): ReplyAction => ({ kind: "view_product", sku, url: `${baseUrl}/demo/products/${sku}` });
   const checkout = (sku: string): ReplyAction => ({ kind: "demo_checkout", sku, url: `${baseUrl}/demo/checkout?sku=${sku}` });
@@ -172,18 +194,26 @@ export function render(decision: Decision, language: Language, baseUrl: string):
   switch (decision.kind) {
     case "greet":
       return { text: t.greet, actions: [] };
+    case "close":
+      return { text: t.close, actions: [] };
     case "ask": {
       const { missing, known } = decision;
       if (missing === "room_size" && known.budgetThb !== undefined) return { text: t.askRoom(known.budgetThb), actions: [] };
       if (missing === "budget" && known.roomSizeBand !== undefined) return { text: t.askBudget(known.roomSizeBand), actions: [] };
       return { text: t.askBoth, actions: [] };
     }
+    case "browse":
+      return { text: [t.browseIntro, ...decision.products.map(t.skuAvailable)].join("\n"), actions: decision.products.map((p) => view(p.sku)) };
     case "match":
       return matchText(decision.outcome, true);
     case "sku": {
       const o = decision.outcome;
       if (o.kind === "unknown_sku") return { text: t.unknownSku(o.asked, CATALOG.map((p) => p.sku).join(", ")), actions: [] };
       if (o.kind === "available") return { text: t.skuAvailable(o.product), actions: offer(o.product) };
+      if (o.kind === "wrong_size") {
+        if (o.followUp === null) return { text: `${t.skuWrongSize(o.product, o.requestedBand)} ${t.askBudgetForAlternative}`, actions: [] };
+        return prefixed(t.skuWrongSize(o.product, o.requestedBand), matchText(o.followUp, false));
+      }
       if (o.kind === "over_budget") return prefixed(t.skuOverBudget(o.product, o.budgetThb), matchText(o.followUp, false));
       if (o.followUp === null) return { text: `${t.skuOutOfStock(o.product)} ${t.askBudgetForAlternative}`, actions: [] };
       return prefixed(t.skuOutOfStock(o.product), matchText(o.followUp, false));

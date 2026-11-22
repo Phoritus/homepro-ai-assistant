@@ -10,6 +10,8 @@ A shopper tells the assistant their room size and budget, in any order and acros
 - `sales-alternative` states why the shopper's size doesn't fit and offers the neighbouring size, naming the mismatch.
 - `sales-nomatch` states the constraint, offers no product, and suggests changing budget or calling staff.
 - `sales-sku` answers a question about one SKU (stock and budget), then offers an alternative if needed.
+- `sales-sku-size` states the mismatch when a SKU is sized for another band than the shopper's known room, and offers no checkout for it (`20 sqm room. Is HP-F01 good for me?`).
+- `sales-sku-unheld` hands off as `out_of_scope` when the shopper asks about an attribute the catalog doesn't hold (`What is the wattage of HP-F01?`).
 - `sales-thai` replies in Thai to Thai messages.
 
 ## How to get to it (user POV)

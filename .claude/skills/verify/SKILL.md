@@ -72,7 +72,7 @@ This kills only the PID recorded in `.verify-run/<port>.json`, then deletes that
 - **Git Bash path rewriting.** Git Bash on Windows turns arguments that start with `/` into Windows paths (`/demo/x` becomes `C:/Program Files/Git/demo/x`). Pass page paths without the leading slash. `get` adds it.
 - **curl and Thai text.** On Windows, curl's command-line arguments can garble Thai text. The helper sends UTF-8 correctly, so use it (or `--data-binary @file.json`) for Thai messages.
 - **Restarts forget sessions.** Sessions are in-memory, so a restart forgets every conversation. Multi-turn journeys must run against one instance.
-- **Unknown messages and the LLM.** In keyword mode, an unrecognised message gets the fallback text, not a handoff. With the LLM, the same message is handed off as `out_of_scope`. Assert per mode.
+- **Unknown messages and the LLM.** In keyword mode, a message no rule matches gets the fallback text, not a handoff. Messages with explicit service words (deliver, install, installment, pay, ผ่อน, จัดส่ง) hand off as `out_of_scope` in both modes. With the LLM, any off-topic message hands off as `out_of_scope`. Assert per mode.
 
 ## Feature map
 
