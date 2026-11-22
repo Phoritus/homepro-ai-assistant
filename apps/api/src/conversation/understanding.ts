@@ -46,14 +46,17 @@ export interface UnderstandContext {
 export type Understander = (text: string, ctx: UnderstandContext) => Promise<Understanding>;
 
 const THAI = /[฀-๿]/;
-const NUMBER = String.raw`(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)`;
+const DIGITS = String.raw`\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?`;
+const NUMBER = `(${DIGITS})`;
+// A minus sign is kept so isValidBudget rejects "-500"; one right after a digit is a range ("1000-1500").
+const SIGNED_NUMBER = String.raw`((?<!\d)[-−]?(?:${DIGITS}))`;
 const AREA = new RegExp(NUMBER + String.raw`\s*(?:m2|m²|sq\.?\s*m|sqm|square\s*met(?:er|re)s?|ตร\.?\s*ม\.?|ตาราง\s*เมตร)`, "i");
-const BUDGET_AFTER = new RegExp(NUMBER + String.raw`\s*(?:baht|thb|บาท|฿)`, "i");
-const BUDGET_BEFORE = new RegExp(String.raw`(?:฿|thb\s*|budget\s*(?:is|of|:)?\s*|งบ(?:ประมาณ)?\s*(?:ไม่เกิน)?\s*)` + NUMBER, "i");
+const BUDGET_AFTER = new RegExp(SIGNED_NUMBER + String.raw`\s*(?:baht|thb|บาท|฿)`, "i");
+const BUDGET_BEFORE = new RegExp(String.raw`(?:฿|thb\s*|budget\s*(?:is|of|:)?\s*|งบ(?:ประมาณ)?\s*(?:ไม่เกิน)?\s*)` + SIGNED_NUMBER, "i");
 const BARE_NUMBER = new RegExp(String.raw`^\s*(?:about|around|ประมาณ)?\s*` + NUMBER + String.raw`\s*$`, "i");
 const SKU = /\bhp[\s-]?f\d{2}\b/i;
 
-const toNumber = (s: string | undefined) => (s === undefined ? null : Number(s.replace(/,/g, "")));
+const toNumber = (s: string | undefined) => (s === undefined ? null : Number(s.replace(/,/g, "").replace("−", "-")));
 
 const BAND_WORDS: [RegExp, RoomSizeBand][] = [
   [/\b(small|tiny)\b|ห้องเล็ก/i, "small"],
