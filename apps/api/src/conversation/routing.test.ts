@@ -96,7 +96,7 @@ describe("issue 003: a SKU question respects the stated room size", () => {
     const r = chat()("I have a 20 sqm room. Is HP-F01 good for me?");
     expect(kinds(r)).toEqual(["sku"]);
     expect(r.decisions[0]).toMatchObject({ outcome: { kind: "wrong_size", requestedBand: "medium", followUp: null } });
-    expect(r.reply.text).toMatch(/HP-F01 is sized for a small room.*not your medium room/);
+    expect(r.reply.text).toMatch(/HP-F01 12-inch desk fan, ฿890 is sized for a small room.*not your medium room/);
     expect(r.reply.text).toMatch(/budget/i);
     expect(r.reply.actions).toEqual([]);
     expect(r.session.awaiting).toBe("budget");
@@ -112,7 +112,7 @@ describe("issue 003: a SKU question respects the stated room size", () => {
 
   it("30 sqm + HP-F01 + budget names the mismatch and offers the in-stock alternative, never HP-F01", () => {
     const r = chat()("30 sqm room, is HP-F01 ok? budget 2000 baht");
-    expect(r.reply.text).toMatch(/HP-F01 is sized for a small room.*not your large room/);
+    expect(r.reply.text).toMatch(/HP-F01 12-inch desk fan, ฿890 is sized for a small room.*not your large room/);
     expect(offered(r, "demo_checkout")).toEqual(["HP-F02"]);
     expect(offered(r, "view_product")).not.toContain("HP-F01");
   });
@@ -132,7 +132,7 @@ describe("issue 003: a SKU question respects the stated room size", () => {
   it("a Thai wrong-size answer is rendered in Thai", () => {
     const r = chat()("ห้อง 20 ตร.ม. HP-F01 เหมาะไหม");
     expect(r.reply.language).toBe("th");
-    expect(r.reply.text).toContain("HP-F01 เหมาะกับห้องขนาดเล็ก");
+    expect(r.reply.text).toMatch(/HP-F01 .*฿890 เหมาะกับห้องขนาดเล็ก/);
     expect(r.reply.actions).toEqual([]);
   });
 });
