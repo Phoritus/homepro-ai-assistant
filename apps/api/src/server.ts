@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { z } from "zod";
-import type { Assistant } from "./assistant.ts";
+import { MAX_MESSAGE_CHARS, type Assistant } from "./assistant.ts";
 import { parseLineWebhook, toLineMessages, verifyLineSignature, type LineReplyClient } from "./channels/line.ts";
 import { CATALOG, findProduct, STORE_NAME } from "./domain/catalog.ts";
 import type { Logger } from "./log.ts";
@@ -18,7 +18,7 @@ const WEB_CHAT_HTML = readFileSync(new URL("../public/index.html", import.meta.u
 
 const chatRequest = z.object({
   sessionId: z.string().regex(/^[\w-]{8,100}$/),
-  message: z.string().trim().min(1).max(1000),
+  message: z.string().trim().min(1).max(MAX_MESSAGE_CHARS),
 });
 
 class HttpError extends Error {

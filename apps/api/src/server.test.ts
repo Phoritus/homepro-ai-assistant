@@ -1,9 +1,10 @@
 import { createHmac } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
-import { createAssistant } from "./assistant.ts";
+import { createAssistant, MAX_MESSAGE_CHARS } from "./assistant.ts";
 import type { LineMessage, LineReplyClient } from "./channels/line.ts";
 import { createMemorySessionStore } from "./conversation/session.ts";
+import type { Understander } from "./conversation/understanding.ts";
 import type { Logger } from "./log.ts";
 import { createHttpServer } from "./server.ts";
 
@@ -22,8 +23,8 @@ const textEvent = (replyToken: string, userId: string, text: string) =>
 let close: (() => void) | undefined;
 afterEach(() => close?.());
 
-async function start(client: LineReplyClient, log: Logger) {
-  const assistant = createAssistant({ sessions: createMemorySessionStore(60_000), llm: null, log, baseUrl: "http://demo.test" });
+async function start(client: LineReplyClient, log: Logger, llm: Understander | null = null) {
+  const assistant = createAssistant({ sessions: createMemorySessionStore(60_000), llm, log, baseUrl: "http://demo.test" });
   const server = createHttpServer({ assistant, log, line: { channelSecret: SECRET, client } });
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
   close = () => server.close();
@@ -56,5 +57,24 @@ describe("LINE webhook", () => {
     expect(delivered.map((d) => d.replyToken)).toEqual(["fresh"]);
     expect(lines).toContainEqual(expect.objectContaining({ level: "warn", event: "line_reply_failed", fields: expect.objectContaining({ error: expect.stringContaining("Invalid reply token") }) }));
     expect(lines.some((l) => l.event === "request_failed")).toBe(false);
+  });
+
+  it("applies the same message length limit as Web Chat before the LLM sees the text", async () => {
+    const seen: string[] = [];
+    const llm: Understander = async (text) => {
+      seen.push(text);
+      return { intent: "greeting", language: "en", roomAreaSqm: null, roomSizeBand: null, budgetThb: null, sku: null };
+    };
+    const delivered: string[] = [];
+    const { log, lines } = recordingLogger();
+    const post = await start({ async reply(token) { delivered.push(token); } }, log, llm);
+
+    const res = await post([textEvent("r1", "U1", "a".repeat(5000))]);
+
+    expect(res.status).toBe(200);
+    expect(MAX_MESSAGE_CHARS).toBe(1000);
+    expect(seen).toEqual(["a".repeat(MAX_MESSAGE_CHARS)]);
+    expect(delivered).toEqual(["r1"]);
+    expect(lines).toContainEqual(expect.objectContaining({ event: "message_truncated", fields: expect.objectContaining({ length: 5000 }) }));
   });
 });
