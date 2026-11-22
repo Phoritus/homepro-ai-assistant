@@ -1,6 +1,5 @@
 import { loadConfig } from "./config.ts";
-import type { Awaiting, Intent, ProductAsk, Understanding } from "./conversation/understanding.ts";
-import { RateLimitedError } from "./conversation/understanding.ts";
+import { RateLimitedError, type Awaiting, type Intent, type ProductAsk, type Understanding } from "./conversation/understanding.ts";
 import { createGroqUnderstander } from "./llm/groq.ts";
 
 interface Probe {
