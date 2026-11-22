@@ -1,5 +1,6 @@
 # 010: Every handoff quotes the order and damaged-delivery sentence, even for unrelated questions
 
+- **Status:** Closed 2026-11-22 in merge `6bd1a6d`. SUP-02 is split into `scope` and `disclosure`. Only order-status and damaged-delivery handoffs quote the scope sentence; every handoff keeps the disclosure.
 - **Severity:** Low
 - **Spec:** §4.2.4, "Clearly inform the user …"
 

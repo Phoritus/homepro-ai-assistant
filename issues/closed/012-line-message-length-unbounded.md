@@ -1,5 +1,6 @@
 # 012: LINE text has no length limit (Web caps at 1,000 characters)
 
+- **Status:** Closed 2026-11-22 in merge `7644b05`. `MAX_MESSAGE_CHARS` (1,000) in `assistant.ts` applies to both channels: LINE text is cut and logged as `message_truncated`, Web keeps its 400 and gets an input `maxlength`.
 - **Severity:** Low
 - **Spec:** §5 (robustness), §1 (identical rules on both channels)
 

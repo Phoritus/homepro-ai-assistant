@@ -1,5 +1,6 @@
 # 007: Groq rate limits (429) after about 19 quick requests, with no retry
 
+- **Status:** Closed 2026-11-22 in merge `4283a5c`. A 429 is retried once after `retry-after` within `LLM_TIMEOUT_MS`; otherwise the turn falls back and logs `llm_rate_limited`. README documents the free-tier limit.
 - **Severity:** Medium
 - **Spec:** §5 is met (the fallback worked), but understanding quality drops silently under load
 - **Path:** LLM

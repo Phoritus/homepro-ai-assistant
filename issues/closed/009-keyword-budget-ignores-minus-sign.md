@@ -1,5 +1,6 @@
 # 009: The keyword fallback reads "budget -500" as ฿500
 
+- **Status:** Closed 2026-11-22 in merge `33b811c`. Budget patterns keep a leading `-` or `−` (not after a digit), so `isValidBudget` rejects negative budgets and the assistant asks again.
 - **Severity:** Low (fallback path only. The LLM path correctly ignored -500 and asked for a budget)
 - **Spec:** §4.1.1, ask clarifying questions when constraints are missing or invalid
 
