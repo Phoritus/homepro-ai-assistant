@@ -45,6 +45,16 @@ export interface UnderstandContext {
 
 export type Understander = (text: string, ctx: UnderstandContext) => Promise<Understanding>;
 
+/** The LLM provider refused the call for rate limiting; the turn falls back to keyword rules. */
+export class RateLimitedError extends Error {
+  readonly retryAfterMs: number;
+  constructor(retryAfterMs: number) {
+    super(`llm rate limited, retry after ${retryAfterMs} ms`);
+    this.name = "RateLimitedError";
+    this.retryAfterMs = retryAfterMs;
+  }
+}
+
 const THAI = /[฀-๿]/;
 const DIGITS = String.raw`\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?`;
 const NUMBER = `(${DIGITS})`;

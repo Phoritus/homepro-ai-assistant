@@ -1,4 +1,4 @@
-import { understandingSchema, type Understander } from "../conversation/understanding.ts";
+import { RateLimitedError, understandingSchema, type Understander } from "../conversation/understanding.ts";
 
 const ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 
@@ -31,23 +31,47 @@ export interface GroqOptions {
   fetch?: typeof fetch;
 }
 
-/** Throws on any failure (HTTP, timeout, non-JSON, schema mismatch); the caller owns the fallback. */
+const DEFAULT_RETRY_AFTER_MS = 1000;
+/** The least time worth giving a retried call; a shorter window would only time out. */
+const MIN_CALL_MS = 500;
+
+function retryAfterMs(res: Response): number {
+  const seconds = Number(res.headers.get("retry-after") ?? NaN);
+  return Number.isFinite(seconds) && seconds >= 0 ? seconds * 1000 : DEFAULT_RETRY_AFTER_MS;
+}
+
+/**
+ * Throws on any failure (HTTP, timeout, non-JSON, schema mismatch); the caller owns the fallback.
+ * A 429 is retried once after retry-after when that still fits in timeoutMs, else RateLimitedError.
+ */
 export function createGroqUnderstander({ apiKey, model, timeoutMs, fetch: fetchImpl = fetch }: GroqOptions): Understander {
   return async (text, ctx) => {
-    const res = await fetchImpl(ENDPOINT, {
-      method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
-      signal: AbortSignal.timeout(timeoutMs),
-      body: JSON.stringify({
-        model,
-        temperature: 0,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: JSON.stringify({ awaiting: ctx.awaiting, earlierMessages: ctx.recentShopperMessages, message: text }) },
-        ],
-      }),
+    const deadline = Date.now() + timeoutMs;
+    const request = JSON.stringify({
+      model,
+      temperature: 0,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: JSON.stringify({ awaiting: ctx.awaiting, earlierMessages: ctx.recentShopperMessages, message: text }) },
+      ],
     });
+    const call = (ms: number) =>
+      fetchImpl(ENDPOINT, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
+        signal: AbortSignal.timeout(ms),
+        body: request,
+      });
+
+    let res = await call(timeoutMs);
+    if (res.status === 429) {
+      const wait = retryAfterMs(res);
+      if (deadline - Date.now() - wait < MIN_CALL_MS) throw new RateLimitedError(wait);
+      await new Promise((r) => setTimeout(r, wait));
+      res = await call(deadline - Date.now());
+      if (res.status === 429) throw new RateLimitedError(retryAfterMs(res));
+    }
     if (!res.ok) throw new Error(`groq http ${res.status}`);
     const body = (await res.json()) as { choices?: { message?: { content?: string } }[] };
     const content = body.choices?.[0]?.message?.content;

@@ -2,6 +2,7 @@ import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { parseLineWebhook, toLineMessages, verifyLineSignature } from "./channels/line.ts";
 import { loadConfig } from "./config.ts";
+import { RateLimitedError } from "./conversation/understanding.ts";
 import { createGroqUnderstander } from "./llm/groq.ts";
 import { createJsonLogger, redact } from "./log.ts";
 
@@ -95,11 +96,45 @@ describe("Groq understander", () => {
   });
 
   it.each([
-    ["HTTP error", () => new Response("rate limited", { status: 429 })],
+    ["HTTP error", () => new Response("server error", { status: 500 })],
     ["non-JSON content", () => new Response(JSON.stringify({ choices: [{ message: { content: "sure! {" } }] }))],
     ["schema mismatch", () => ok({ ...reading, intent: "buy_now" })],
     ["no choices", () => new Response("{}")],
   ] as const)("throws on %s so the caller falls back", async (_label, respond) => {
     await expect(groq(respond)("x", { awaiting: null, recentShopperMessages: [] })).rejects.toThrow();
+  });
+
+  describe("on 429", () => {
+    const limited = (retryAfter?: string) =>
+      new Response("rate limited", { status: 429, headers: retryAfter === undefined ? {} : { "retry-after": retryAfter } });
+    const sequence = (responses: (() => Response)[], timeoutMs = 1000) => {
+      let calls = 0;
+      const understand = createGroqUnderstander({
+        apiKey: "k", model: "m", timeoutMs,
+        fetch: async () => (responses[calls++] ?? responses.at(-1)!)(),
+      });
+      return { understand, calls: () => calls };
+    };
+    const ctx = { awaiting: null, recentShopperMessages: [] };
+
+    it("retries once after retry-after and returns the reading", async () => {
+      const g = sequence([() => limited("0"), () => ok(reading)]);
+      await expect(g.understand("x", ctx)).resolves.toEqual(reading);
+      expect(g.calls()).toBe(2);
+    });
+
+    it("throws RateLimitedError with the wait when the retry is limited too", async () => {
+      const g = sequence([() => limited("0"), () => limited("7")]);
+      const err = await g.understand("x", ctx).catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(RateLimitedError);
+      expect(err).toMatchObject({ retryAfterMs: 7000 });
+      expect(g.calls()).toBe(2);
+    });
+
+    it("does not retry when the wait would not fit inside the timeout", async () => {
+      const g = sequence([() => limited("5"), () => ok(reading)], 1000);
+      await expect(g.understand("x", ctx)).rejects.toBeInstanceOf(RateLimitedError);
+      expect(g.calls()).toBe(1);
+    });
   });
 });

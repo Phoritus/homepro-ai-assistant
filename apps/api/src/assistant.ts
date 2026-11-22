@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { AssistantReply, Channel } from "@homepro/shared";
 import { handleTurn, type UnderstandingSource } from "./conversation/engine.ts";
 import { newSession, sessionKey, type SessionStore } from "./conversation/session.ts";
-import { understandByKeywords, type UnderstandContext, type Understander, type Understanding } from "./conversation/understanding.ts";
+import { RateLimitedError, understandByKeywords, type UnderstandContext, type Understander, type Understanding } from "./conversation/understanding.ts";
 import type { Logger } from "./log.ts";
 
 export interface AssistantDeps {
@@ -37,7 +37,8 @@ export function createAssistant({ sessions, llm, log, baseUrl, now = () => new D
         log.info("llm_ok", { ms: Date.now() - started, intent: understanding.intent });
         return { understanding, source: "llm" };
       } catch (err) {
-        log.warn("llm_failed", { ms: Date.now() - started, error: err instanceof Error ? `${err.name}: ${err.message}` : String(err) });
+        if (err instanceof RateLimitedError) log.warn("llm_rate_limited", { ms: Date.now() - started, retryAfterMs: err.retryAfterMs });
+        else log.warn("llm_failed", { ms: Date.now() - started, error: err instanceof Error ? `${err.name}: ${err.message}` : String(err) });
       }
     }
     return { understanding: understandByKeywords(text, ctx), source: "rules" };
