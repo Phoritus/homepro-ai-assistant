@@ -1,5 +1,5 @@
 import type { AssistantReply, HandoffPacket, HandoffReason, KnownContext, Turn } from "@homepro/shared";
-import { findProduct } from "../domain/catalog.ts";
+import { CATALOG, findProduct, inStock } from "../domain/catalog.ts";
 import { checkSku, isValidBudget, matchProducts } from "../domain/matching.ts";
 import { bandForArea } from "../domain/roomSize.ts";
 import { render, type Decision } from "./render.ts";
@@ -39,14 +39,20 @@ interface Step {
   awaiting?: Awaiting;
 }
 
-type Route = (known: KnownContext, u: Understanding) => Step;
+type Route = (known: KnownContext, u: Understanding) => Step | Step[];
 
-const recommend: Route = (known) => {
+const recommend = (known: KnownContext): Step => {
   const { roomSizeBand: band, budgetThb: budget } = known;
   if (band === undefined && budget === undefined) return { decision: { kind: "ask", missing: "both", known }, known, awaiting: null };
   if (band === undefined) return { decision: { kind: "ask", missing: "room_size", known }, known, awaiting: "room_size" };
   if (budget === undefined) return { decision: { kind: "ask", missing: "budget", known }, known, awaiting: "budget" };
   return { decision: { kind: "match", outcome: matchProducts(band, budget) }, known, awaiting: null };
+};
+
+const browseCatalog: Route = (known) => {
+  const browse: Step = { decision: { kind: "browse", products: CATALOG.filter(inStock) }, known };
+  const next = recommend(known);
+  return next.decision.kind === "ask" ? [browse, next] : [browse];
 };
 
 const handoff =
@@ -56,7 +62,7 @@ const handoff =
 const productInfo: Route = (known, u) => {
   if (u.asks === "unheld") return handoff("out_of_scope")(known, u);
   const [sku] = u.skus;
-  if (sku === undefined) return recommend(known, u);
+  if (sku === undefined) return recommend(known);
   const outcome = checkSku(sku, known.budgetThb, known.roomSizeBand);
   const awaitingBudget = (outcome.kind === "out_of_stock" || outcome.kind === "wrong_size") && outcome.followUp === null;
   // The follow-up question needs a band, and asking about a SKU implies its band when the shopper gave none.
@@ -66,6 +72,7 @@ const productInfo: Route = (known, u) => {
 
 const ROUTES: Record<Intent, Route> = {
   recommend,
+  browse_catalog: browseCatalog,
   product_info: productInfo,
   return_policy: (known) => ({ decision: { kind: "policy", policyId: "SUP-01" }, known }),
   order_status: handoff("order_status"),
@@ -94,9 +101,10 @@ function decide(session: Session, u: Understanding): { steps: Step[]; known: Kno
   let known = mergeSlots(session.known, u);
   const all: Step[] = [];
   for (const intent of u.intents) {
-    const step = ROUTES[intent](known, u);
-    known = step.known;
-    all.push(step);
+    for (const step of [ROUTES[intent](known, u)].flat()) {
+      known = step.known;
+      all.push(step);
+    }
   }
   const steps = keep(all);
   const awaiting = [...steps].reverse().find((s) => s.awaiting !== undefined)?.awaiting ?? session.awaiting;

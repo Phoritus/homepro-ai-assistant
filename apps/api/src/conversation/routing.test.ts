@@ -207,3 +207,52 @@ describe("issue 011: a message with two requests answers both", () => {
     expect(r.session.awaiting).toBe("budget");
   });
 });
+
+describe("issue 014: browsing the catalog", () => {
+  it.each([
+    ["ตอนนี้มีอะไรเหลือบ้าง", "th"],
+    ["What fans do you sell?", "en"],
+    ["What do you have in stock?", "en"],
+    ["มีพัดลมรุ่นไหนบ้าง", "th"],
+  ] as const)("%s is read as browse_catalog", (text, language) => {
+    expect(understandByKeywords(text, { awaiting: null, recentShopperMessages: [] })).toMatchObject({ intents: ["browse_catalog"], language });
+  });
+
+  it.each([
+    ["Is HP-F03 in stock?", ["product_info"]],
+    ["What fans do you have for a 12 sqm room?", ["recommend"]],
+  ] as const)("%s keeps its narrower intent", (text, intents) => {
+    expect(understandByKeywords(text, { awaiting: null, recentShopperMessages: [] }).intents).toEqual(intents);
+  });
+
+  it.each([
+    ["injected reading", reading({ intents: ["browse_catalog"], language: "th" })],
+    ["keyword rules", undefined],
+  ] as const)("lists the in-stock fans with price and room size, then asks for both slots (%s)", (_label, injected) => {
+    const say = chat();
+    say("Where is my order?");
+    const r = say("ตอนนี้มีอะไรเหลือบ้าง", injected);
+    expect(kinds(r)).toEqual(["browse", "ask"]);
+    expect(r.reply.handoff).toBeNull();
+    expect(r.reply.text).toMatch(/HP-F01 .*฿890.*ห้องขนาดเล็ก[\s\S]*HP-F02 .*฿1,390.*ห้องขนาดกลาง/);
+    expect(r.reply.text).not.toContain("HP-F03");
+    expect(r.reply.text).toContain("ขนาดห้อง");
+    expect(offered(r, "view_product")).toEqual(["HP-F01", "HP-F02"]);
+    expect(offered(r, "demo_checkout")).toEqual([]);
+  });
+
+  it("asks only for the slot still missing and waits for it", () => {
+    const say = chat();
+    say("12 sqm bedroom");
+    const r = say("What do you have in stock?");
+    expect(kinds(r)).toEqual(["browse", "ask"]);
+    expect(r.reply.text).toMatch(/budget in THB/);
+    expect(r.session.awaiting).toBe("budget");
+  });
+
+  it("with room size and budget known it lists the stock without asking again", () => {
+    const say = chat();
+    say("12 sqm bedroom, budget 1000 baht");
+    expect(kinds(say("What fans do you sell?"))).toEqual(["browse"]);
+  });
+});

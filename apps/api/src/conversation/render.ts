@@ -8,6 +8,7 @@ export type Decision =
   | { kind: "greet" }
   | { kind: "close" }
   | { kind: "ask"; missing: "room_size" | "budget" | "both"; known: KnownContext }
+  | { kind: "browse"; products: readonly Product[] }
   | { kind: "match"; outcome: MatchOutcome }
   | { kind: "sku"; outcome: SkuOutcome }
   | { kind: "policy"; policyId: "SUP-01" }
@@ -32,6 +33,7 @@ interface Phrases {
   askRoom: (budget: number) => string;
   askBudget: (band: RoomSizeBand) => string;
   item: (p: Product) => string;
+  browseIntro: string;
   fits: (p: Product, budget: number) => string;
   stock: (p: Product) => string;
   intro: (count: number) => string;
@@ -70,6 +72,7 @@ const EN: Phrases = {
   askRoom: (budget) => `Got it, your budget is ${thb(budget)}. What size is your room in m²?`,
   askBudget: (band) => `Got it, a ${EN.band[band]}. What's your budget in THB?`,
   item: (p) => `${p.sku} ${p.name.en}, ${thb(p.priceThb)}`,
+  browseIntro: "Here's what we have in stock now:",
   fits: (p, budget) => `Reason: sized for a ${EN.band[p.band]} and within your ${thb(budget)} budget.`,
   stock: (p) => `${p.stock} in stock at ${STORE_NAME}.`,
   intro: (n) => (n === 1 ? "Here's a fan that fits:" : `Here are ${n} fans that fit, cheapest first:`),
@@ -118,6 +121,7 @@ const TH: Phrases = {
   askRoom: (budget) => `รับทราบค่ะ งบประมาณ ${thb(budget)} ห้องของคุณขนาดกี่ตารางเมตรคะ`,
   askBudget: (band) => `รับทราบค่ะ ${TH.band[band]} งบประมาณเท่าไรคะ`,
   item: (p) => `${p.sku} ${p.name.th} ราคา ${thb(p.priceThb)}`,
+  browseIntro: "สินค้าที่มีอยู่ตอนนี้ค่ะ:",
   fits: (p, budget) => `เหตุผล: เหมาะกับ${TH.band[p.band]} และอยู่ในงบ ${thb(budget)} ของคุณ`,
   stock: (p) => `มีสินค้า ${p.stock} ชิ้นที่ ${STORE_NAME}`,
   intro: (n) => (n === 1 ? "พัดลมที่เหมาะกับคุณ:" : `พัดลม ${n} รุ่นที่เหมาะกับคุณ เรียงจากราคาต่ำสุด:`),
@@ -198,6 +202,8 @@ function renderOne(decision: Decision, language: Language, baseUrl: string): Ren
       if (missing === "budget" && known.roomSizeBand !== undefined) return { text: t.askBudget(known.roomSizeBand), actions: [] };
       return { text: t.askBoth, actions: [] };
     }
+    case "browse":
+      return { text: [t.browseIntro, ...decision.products.map(t.skuAvailable)].join("\n"), actions: decision.products.map((p) => view(p.sku)) };
     case "match":
       return matchText(decision.outcome, true);
     case "sku": {

@@ -4,6 +4,7 @@ const ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 
 const TAXONOMY = `Intents (a message may carry more than one; list them in the order the shopper raised them):
 - "recommend": wants help choosing a fan, or gives room size or budget. Comparing several SKUs for their room is "recommend".
+- "browse_catalog": asks what fans the shop has, sells, has in stock or has left, with no room size, budget or SKU.
 - "product_info": asks about ONE named SKU (like "HP-F01"). Set "asks" to what they want to know:
     "price", "stock" (availability), "fit" (is it right for my room), or "unheld" for ANY other attribute
     (wattage, noise, colour, remote, dimensions, features, materials). We only hold name, price, stock and room size.

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 export const LLM_INTENTS = [
   "recommend",
+  "browse_catalog",
   "product_info",
   "return_policy",
   "order_status",
@@ -105,6 +106,8 @@ const OUT_OF_SCOPE_WORDS =
   /\bdeliver\b|\b(delivery|shipping) (fee|cost|charge)s?\b|\binstall\w*|\bpay(ment|ing|s)?\b|\bcredit card\b|\b(store|opening|business) hours\b|\bwhat time\b[^?]*\b(open|close)|ผ่อน|จัดส่ง|ติดตั้ง|โปรโมชั่น|ชำระ/i;
 const CLOSING_WORDS = /\b(thanks|thank you|thx|bye|goodbye|that['’]?s all)\b|ขอบคุณ|บาย|ลาก่อน/i;
 const GREETING_WORDS = /^\s*(hi|hello|hey|good (morning|afternoon|evening))\b|สวัสดี/i;
+const BROWSE_WORDS =
+  /\bwhat (?:\w+ )?(?:do|does) (?:you|the shop|the store) (?:have|sell|carry|stock)\b|\bwhat(?:['’]s| is)? (?:in stock|available|left)\b|\banything (?:in stock|available|left)\b|\b(?:show|list) (?:me )?(?:your |all |the )?(?:fans|products|models)\b|\bcatalog(?:ue)?\b|มี(?:อะไร|รุ่นไหน|แบบไหน)(?:บ้าง|เหลือ|ขาย)|มีพัดลม(?:อะไร|รุ่นไหน|แบบไหน)|เหลืออะไร|ขายอะไร/i;
 const RECOMMEND_WORDS = /\b(fan|recommend|room|bedroom|buy|price|budget|stock)\b|พัดลม|แนะนำ|ห้อง|ซื้อ|ราคา|งบ/i;
 
 // Order matters: an attribute we don't hold wins over a held one so the question is never answered with the wrong fact.
@@ -155,8 +158,12 @@ export function understandByKeywords(text: string, ctx: UnderstandContext): Unde
   const productInfo = skus.length === 1 && (!hasOtherIntent || asks !== null);
   if (productInfo) hits.push({ intent: "product_info", at: Math.min(firstSkuAt, askAt) });
 
+  const browseAt = index(BROWSE_WORDS, text);
+  const browse = browseAt !== undefined && skus.length === 0 && !hasSlot;
+  if (browse) hits.push({ intent: "browse_catalog", at: browseAt });
+
   const recommendWordAt = index(RECOMMEND_WORDS, text);
-  const wantsRecommend = !productInfo && (skus.length >= 2 || hasSlot || (recommendWordAt !== undefined && !hasOtherIntent));
+  const wantsRecommend = !productInfo && !browse && (skus.length >= 2 || hasSlot || (recommendWordAt !== undefined && !hasOtherIntent));
   if (wantsRecommend) {
     const slotAt = Math.min(areaMatch?.index ?? Infinity, budgetMatch?.index ?? Infinity, bandHit?.at ?? Infinity, bare === null ? Infinity : 0);
     hits.push({ intent: "recommend", at: Math.min(slotAt, recommendWordAt ?? Infinity, firstSkuAt) });
