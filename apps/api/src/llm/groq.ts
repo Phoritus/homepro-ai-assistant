@@ -2,47 +2,48 @@ import { LLM_INTENTS, PRODUCT_ASKS, RateLimitedError, understandingSchema, type 
 
 const ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 
-const TAXONOMY = `Intents (a message may carry more than one; list them in the order the shopper raised them):
-- "recommend": wants help choosing a fan, or gives room size or budget. Comparing several SKUs for their room is "recommend".
-- "browse_catalog": asks what fans the shop has, sells, has in stock or has left, with no room size, budget or SKU.
-- "product_info": asks about ONE named SKU (like "HP-F01"). Set "asks" to what they want to know:
-    "price", "stock" (availability), "fit" (is it right for my room), or "unheld" for ANY other attribute
-    (wattage, noise, colour, remote, dimensions, features, materials). We only hold name, price, stock and room size.
-- "return_policy": returns, refunds, exchanges.
-- "order_status": where is my order, tracking, delivery status of an existing order.
-- "damaged_delivery": an item arrived broken or damaged.
-- "warranty": warranty or guarantee questions.
-- "staff_request": wants a human.
-- "greeting": a greeting with no request.
-- "closing": thanks, goodbye, or ending the chat with no new request.
-- "out_of_scope": a question about the shop that staff could answer but the above don't cover, including delivery
-    areas or fees for new purchases, payment methods, installments, installation, store hours, promotions, other products.
-- "off_topic": not about the shop at all: weather, jokes, news, general knowledge, chit-chat.
-    Mentioning hot weather while asking for a fan is "recommend", not "off_topic".
-Never use "recommend" or "product_info" just because a message mentions fans or buying; delivery, payment and
-installation questions are "out_of_scope" even when they mention a fan.
-Drop "greeting" or "closing" when the same message also carries a real request.`;
+const TAXONOMY = `Intents (classify ONLY current "message"; use "earlierMessages" solely to resolve pronouns; list in order raised):
+- "recommend": wants help choosing a fan, states room size/type, or states a budget. Comparing SKUs for a room is "recommend".
+- "browse_catalog": asks what the shop sells or has in stock with NO room size, budget, or SKU (e.g., "what do you sell", "ขายอะไร", "ขายเกี่ยวกับอะไร", "มีอะไรขายบ้าง", "มีพัดลมรุ่นไหนบ้าง").
+- "product_info": asks about ONE named SKU (e.g., "HP-F01"). Set "asks" to:
+    * "price": cost/price.
+    * "stock": availability/stock count.
+    * "fit": suitability for a room size.
+    * "unheld": ANY other attribute not in our catalog (wattage, noise, colour, remote, dimensions, material). We ONLY hold name, price, stock, and room size.
+- "return_policy": returns, refunds, exchanges, unopened item return window.
+- "order_status": tracking, delivery status, or ETA of an existing order.
+- "damaged_delivery": item arrived broken, defective, or damaged.
+- "warranty": warranty, guarantee, or repair coverage.
+- "staff_request": explicitly asks for a human, admin, or agent.
+- "greeting": bare greeting OR vague conversation starter with no specific topic yet (e.g., "hi", "สวัสดี", "สอบถามข้อมูล", "ขอสอบถามหน่อย", "มีเรื่องจะถาม"). Drop if paired with a specific request.
+- "closing": thanks, goodbye, or ending chat with no new request. Drop if paired with a specific request.
+- "out_of_scope": a CONCRETE question about the shop not covered above (e.g., new-order delivery fees/areas, payment methods, installments, installation, store hours, promos, non-fan products). Never use for vague "I have a question" openers.
+- "off_topic": unrelated to shopping or the store (weather, jokes, chit-chat). "It's hot, I need a fan" is "recommend", not "off_topic".
 
-const SYSTEM_PROMPT = `You read messages sent to a fan shop's chat assistant and return ONLY a JSON object.
-You never answer the shopper. You only classify and extract what they said.
+Rule: Delivery, payment, or installation questions are always "out_of_scope", never "recommend" or "product_info".`;
+
+const SYSTEM_PROMPT = `You are a strict NLU parser for a Thai/English HomePro fan shop assistant.
+Return ONLY a valid JSON object matching the schema. Never answer the shopper.
 
 ${TAXONOMY}
 
-Fields (all required, use null when not stated):
-- intents: array of one or more intents, as above.
-- asks: for "product_info", one of "price", "stock", "fit", "unheld"; otherwise null.
-- language: "th" if the message is mainly Thai, otherwise "en".
-- roomAreaSqm: room area in square metres as a number, or null.
-- roomSizeBand: "small", "medium" or "large" only if the shopper uses such a word and gives no area, else null.
-- budgetThb: maximum budget in Thai baht as a number, or null.
-- skus: every product code like "HP-F01" exactly as written, in order; empty array if none.
-- opener: one short, warm sentence in the message's language that acknowledges how the shopper feels or what
-  they are dealing with, such as sympathy for a damaged item or a hot bedroom. The shop's code writes the rest of the
-  reply, so the opener must not answer anything: no numbers, prices, product codes, stock, policies, returns,
-  warranty, delivery, orders, promises or questions. Use null for a bare greeting, a goodbye, or a bare number.
+Fields (use null when not stated in current message):
+- intents: non-empty array from the taxonomy above.
+- asks: required ("price" | "stock" | "fit" | "unheld") when "product_info" is in intents; else null.
+- language: "th" if current message contains Thai script/transliteration, else "en".
+- roomAreaSqm: numeric area in sqm if stated (e.g., "20 ตร.ม." -> 20), else null.
+- roomSizeBand: "small" | "medium" | "large" ONLY when roomAreaSqm is null:
+    * "small": small room, ห้องเล็ก, ห้องนอนเล็ก, โต๊ะทำงาน, desk
+    * "medium": medium room, ห้องกลาง, ห้องนอน, bedroom
+    * "large": large room, ห้องใหญ่, ห้องนั่งเล่น, ห้องรับแขก, living room, hall
+- budgetThb: max budget in THB as a number (e.g., "พันนึง" -> 1000, "พันห้า" -> 1500, "ไม่เกิน 1,400" -> 1400), else null.
+- skus: normalized uppercase SKUs in current message or resolved from earlierMessages ("this/it/อันนี้/ตัวนี้"). Normalize "hp-f01" -> "HP-F01", "hp-f03" or "hp-f0318" -> "HP-F03". Empty array if none.
+- opener: one brief warm sentence (max 10 words) acknowledging emotion/situation (e.g., heat, broken item). For Thai ("th"), ALWAYS use female polite particles ("ค่ะ" / "คะ") and NEVER use "ครับ". Must contain ZERO facts, numbers, SKUs, prices, policies, or questions. Set to null for bare greetings, vague openers ("สอบถามข้อมูล"), goodbyes, or bare numbers.
 
-If "awaiting" is "budget" and the message is just a number, that number is budgetThb and intents is ["recommend"].
-If "awaiting" is "room_size" and the message is just a number, that number is roomAreaSqm and intents is ["recommend"].`;
+Disambiguation with "awaiting":
+- awaiting === "budget" + bare number -> budgetThb = number, intents = ["recommend"].
+- awaiting === "room_size" + bare number -> roomAreaSqm = number, intents = ["recommend"].
+- awaiting === "room_size" + size word -> roomSizeBand = band, intents = ["recommend"].`;
 
 const nullable = (type: string) => ({ type: [type, "null"] });
 
@@ -62,9 +63,9 @@ const READING_SCHEMA = {
   },
 };
 
-/** Reasoning knob per model family: gpt-oss takes "medium", qwen3 takes "none". Other models get none. */
+/** Lower reasoning effort on gpt-oss to stay well within Groq free-tier TPM limits. */
 const REASONING_EFFORT: [prefix: string, effort: string][] = [
-  ["openai/gpt-oss", "medium"],
+  ["openai/gpt-oss", "low"],
   ["qwen/qwen3", "none"],
 ];
 
@@ -81,7 +82,6 @@ export interface GroqOptions {
 }
 
 const DEFAULT_RETRY_AFTER_MS = 1000;
-/** The least time worth giving a retried call; a shorter window would only time out. */
 const MIN_CALL_MS = 500;
 
 function retryAfterMs(res: Response): number {
@@ -89,10 +89,6 @@ function retryAfterMs(res: Response): number {
   return Number.isFinite(seconds) && seconds >= 0 ? seconds * 1000 : DEFAULT_RETRY_AFTER_MS;
 }
 
-/**
- * Throws on any failure (HTTP, timeout, non-JSON, schema mismatch); the caller owns the fallback.
- * A 429 is retried once after retry-after when that still fits in timeoutMs, else RateLimitedError.
- */
 export function createGroqUnderstander({ apiKey, model, timeoutMs, fetch: fetchImpl = fetch }: GroqOptions): Understander {
   return async (text, ctx) => {
     const deadline = Date.now() + timeoutMs;

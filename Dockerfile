@@ -14,4 +14,6 @@ COPY apps/api apps/api
 
 USER node
 EXPOSE 3000
-CMD ["npm", "start"]
+# Run node directly, not through npm, so the platform's SIGTERM reaches the server instead of npm reporting it as a failure.
+WORKDIR /app/apps/api
+CMD ["node", "src/main.ts"]

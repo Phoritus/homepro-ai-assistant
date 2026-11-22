@@ -23,7 +23,17 @@ const line = config.line
     }
   : null;
 
-createHttpServer({ assistant, log, line }).listen(config.port, () => {
+const server = createHttpServer({ assistant, log, line });
+
+// Node as a container's PID 1 ignores SIGTERM by default, so stop explicitly when the platform asks.
+for (const signal of ["SIGTERM", "SIGINT"] as const) {
+  process.once(signal, () => {
+    log.info("server_stopping", { signal });
+    server.close(() => process.exit(0));
+  });
+}
+
+server.listen(config.port, () => {
   log.info("server_started", {
     port: config.port,
     baseUrl: config.publicBaseUrl,
